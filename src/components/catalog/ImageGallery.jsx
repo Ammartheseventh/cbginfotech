@@ -23,7 +23,7 @@ export default function ImageGallery({ images, name }) {
             <button
               key={i}
               onClick={() => setActive(i)}
-              className={`aspect-square rounded-md overflow-hidden border-2 transition-colors RM{
+              className={`aspect-square rounded-md overflow-hidden border-2 transition-colors ${
                 i === active
                   ? 'border-black'
                   : 'border-transparent hover:border-gray-300'

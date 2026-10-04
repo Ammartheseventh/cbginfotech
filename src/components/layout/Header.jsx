@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../store/useCartStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { categories } from '../../data/categories';
@@ -50,7 +50,10 @@ export default function Header() {
   const itemCount = useCartStore((state) =>
     state.items.reduce((sum, i) => sum + i.quantity, 0)
   );
+
   const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+  const navigate = useNavigate();
 
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
@@ -94,6 +97,12 @@ export default function Header() {
       document.removeEventListener('keydown', onKey);
     };
   }, [categoriesOpen]);
+
+  const handleLogout = async () => {
+    setUserMenuOpen(false);
+    await logout();
+    navigate('/');
+  };
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
@@ -262,52 +271,88 @@ export default function Header() {
 
             {userMenuOpen && (
               <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden z-50">
-                <div className="px-4 py-3 border-b border-gray-100">
-                  <p className="text-sm font-medium text-gray-900 truncate">
-                    {user?.name ?? 'Guest'}
-                  </p>
-                  <p className="text-xs text-gray-500 truncate">
-                    {user?.email ?? ''}
-                  </p>
-                </div>
+                {user ? (
+                  <>
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {user.name}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">
+                        {user.email}
+                      </p>
+                    </div>
 
-                <ul className="py-1">
-                  <li>
-                    <Link
-                      to="/account/orders"
-                      onClick={() => setUserMenuOpen(false)}
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand transition-colors"
-                    >
-                      My Orders
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      to="/account/addresses"
-                      onClick={() => setUserMenuOpen(false)}
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand transition-colors"
-                    >
-                      Addresses
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      to="/account/settings"
-                      onClick={() => setUserMenuOpen(false)}
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand transition-colors"
-                    >
-                      Settings
-                    </Link>
-                  </li>
-                </ul>
+                    <ul className="py-1">
+                      {user.role === 'admin' && (
+                        <li>
+                          <Link
+                            to="/admin"
+                            onClick={() => setUserMenuOpen(false)}
+                            className="block px-4 py-2 text-sm font-medium text-brand hover:bg-gray-50 transition-colors"
+                          >
+                            Admin Panel
+                          </Link>
+                        </li>
+                      )}
+                      <li>
+                        <Link
+                          to="/account/orders"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand transition-colors"
+                        >
+                          My Orders
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          to="/account/addresses"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand transition-colors"
+                        >
+                          Addresses
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          to="/account/settings"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand transition-colors"
+                        >
+                          Settings
+                        </Link>
+                      </li>
+                    </ul>
 
-                <button
-                  type="button"
-                  onClick={() => setUserMenuOpen(false)}
-                  className="block w-full text-left px-4 py-2 text-sm font-semibold text-brand hover:bg-gray-50 transition-colors border-t border-gray-100"
-                >
-                  Log Out
-                </button>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="block w-full text-left px-4 py-2 text-sm font-semibold text-brand hover:bg-gray-50 transition-colors border-t border-gray-100"
+                    >
+                      Log Out
+                    </button>
+                  </>
+                ) : (
+                  <ul className="py-1">
+                    <li>
+                      <Link
+                        to="/login"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="block px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 transition-colors"
+                      >
+                        Log in
+                      </Link>
+                    </li>
+                    <li>
+                      <Link
+                        to="/register"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand transition-colors"
+                      >
+                        Register
+                      </Link>
+                    </li>
+                  </ul>
+                )}
               </div>
             )}
           </div>

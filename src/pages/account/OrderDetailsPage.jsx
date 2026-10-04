@@ -22,7 +22,7 @@ export default function OrderDetailPage() {
 
   usePageTitle(order?.id ?? 'Order');
 
-  if (!order || order.userId !== user.id) {
+  if (!order || !user || order.userId !== user.id) {
     return (
       <div>
         <Link

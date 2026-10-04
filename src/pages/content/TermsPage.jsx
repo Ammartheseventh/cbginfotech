@@ -25,7 +25,7 @@ export default function TermsPage() {
       <h2>Orders and payment</h2>
       <p>
         All orders are subject to acceptance and availability. Prices are
-        listed in US Dollars (USD) and are subject to change without
+        listed in Malaysian Ringgit (RM) and are subject to change without
         notice. Payment must be completed via the methods shown at
         checkout, and a valid payment receipt must be uploaded for orders
         to be processed.

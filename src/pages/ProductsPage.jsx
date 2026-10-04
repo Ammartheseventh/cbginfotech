@@ -17,7 +17,7 @@ export default function ProductsPage() {
     () => getProducts({ category, brand, q, sort }),
     [category, brand, q, sort]
   );
-  const { data: filtered, loading } = useAsync(fetchProducts);
+  const { data: filtered, loading, error } = useAsync(fetchProducts);
   const { data: brands } = useAsync(getBrands);
 
   const handleSearchChange = useCallback(
@@ -29,6 +29,16 @@ export default function ProductsPage() {
     return (
       <div className="max-w-7xl mx-auto px-4 py-12">
         <p className="text-sm text-gray-500">Loading products…</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-12">
+        <p className="text-sm text-red-500">
+          Could not load products. Try refreshing the page.
+        </p>
       </div>
     );
   }

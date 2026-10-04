@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useCartStore } from '../store/useCartStore';
 import { calculateDiscount } from '../api/coupons';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useAuthStore } from '../store/useAuthStore';
 import CartItem from '../components/cart/CartItem';
 import CouponInput from '../components/cart/CouponInput';
 
@@ -13,6 +14,7 @@ export default function CartPage() {
   const coupon = useCartStore((state) => state.coupon);
   const getTotal = useCartStore((state) => state.getTotal);
   const clearCart = useCartStore((state) => state.clearCart);
+  const user = useAuthStore((s) => s.user);
 
   if (items.length === 0) {
     return (
@@ -95,12 +97,23 @@ export default function CartPage() {
               <span className="font-semibold">RM{total}</span>
             </div>
 
-            <button
-              onClick={() => navigate('/checkout')}
-              className="mt-6 w-full py-3 bg-brand text-white text-sm font-medium rounded-md hover:bg-brand-dark"
-            >
-              Proceed to Checkout
-            </button>
+            {user ? (
+              <button
+                onClick={() => navigate('/checkout')}
+                className="mt-6 w-full py-3 bg-brand text-white text-sm font-medium rounded-md hover:bg-brand-dark transition-colors"
+              >
+                Proceed to Checkout
+              </button>
+            ) : (
+              <button
+                onClick={() =>
+                  navigate('/login', { state: { from: '/checkout' } })
+                }
+                className="mt-6 w-full py-3 bg-brand text-white text-sm font-medium rounded-md hover:bg-brand-dark transition-colors"
+              >
+                Log in to checkout
+              </button>
+            )}
 
             <Link
               to="/products"

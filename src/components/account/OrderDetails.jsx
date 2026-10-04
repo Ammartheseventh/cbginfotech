@@ -180,7 +180,7 @@ export default function OrderDetails({ order }) {
         <div className="border border-gray-200 rounded-md divide-y divide-gray-200">
           {order.items.map((item) => (
             <div key={item.id} className="flex gap-4 p-4">
-              <div className="w-16 h-16 flex-shrink-0 bg-gray-100 rounded-md overflow-hidden">
+              <div className="w-16 h-16 shrink-0 bg-gray-100 rounded-md overflow-hidden">
                 <img
                   src={item.images[0]}
                   alt={item.name}
@@ -197,7 +197,7 @@ export default function OrderDetails({ order }) {
                   </p>
                 </div>
                 <p className="text-sm font-semibold">
-                  ${item.price * item.quantity}
+                  RM{item.price * item.quantity}
                 </p>
               </div>
             </div>
@@ -207,7 +207,7 @@ export default function OrderDetails({ order }) {
         <div className="border border-t-0 border-gray-200 rounded-b-md p-4 text-sm">
           <div className="flex justify-between">
             <span className="text-gray-500">Subtotal</span>
-            <span className="text-gray-900">${order.subtotal}</span>
+            <span className="text-gray-900">RM{order.subtotal}</span>
           </div>
           {order.coupon && (
             <div className="flex justify-between mt-2">
@@ -217,7 +217,7 @@ export default function OrderDetails({ order }) {
                   {order.coupon.code}
                 </span>
               </span>
-              <span className="text-gray-900">-${order.discount}</span>
+              <span className="text-gray-900">-RM{order.discount}</span>
             </div>
           )}
           <div className="flex justify-between mt-2">
@@ -225,12 +225,12 @@ export default function OrderDetails({ order }) {
               {order.delivery === 'ship' ? 'Shipping' : 'Pickup'}
             </span>
             <span className="text-gray-900">
-              {order.delivery === 'ship' ? `$${order.shipping}` : 'Free'}
+              {order.delivery === 'ship' ? `RM${order.shipping}` : 'Free'}
             </span>
           </div>
           <div className="flex justify-between mt-4 pt-4 border-t border-gray-200">
             <span className="font-semibold text-gray-900">Total</span>
-            <span className="font-semibold text-gray-900">${order.total}</span>
+            <span className="font-semibold text-gray-900">RM{order.total}</span>
           </div>
         </div>
       </section>

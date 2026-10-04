@@ -1,12 +1,19 @@
+import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { useAuthStore } from './store/useAuthStore';
 import Layout from './components/layout/Layout';
 import CheckoutLayout from './components/checkout/CheckoutLayout';
 import AccountLayout from './components/account/AccountLayout';
 import ContentLayout from './components/content/ContentLayout';
+import AuthLayout from './components/auth/AuthLayout';
+import RequireAuth from './components/auth/RequireAuth';
 import HomePage from './pages/HomePage';
 import ProductsPage from './pages/ProductsPage';
 import ProductDetailsPage from './pages/ProductDetailsPage';
 import CartPage from './pages/CartPage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import NotFoundPage from './pages/NotFoundPage';
 import CheckoutInformationPage from './pages/checkout/InformationPage';
 import CheckoutDeliveryPage from './pages/checkout/DeliveryPage';
 import CheckoutReviewPage from './pages/checkout/ReviewPage';
@@ -22,6 +29,12 @@ import ReturnsPage from './pages/content/ReturnsPage';
 import ContactPage from './pages/content/ContactPage';
 
 function App() {
+  const refresh = useAuthStore((s) => s.refresh);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
   return (
     <Routes>
       <Route element={<Layout />}>
@@ -30,7 +43,14 @@ function App() {
         <Route path="/products/:id" element={<ProductDetailsPage />} />
         <Route path="/cart" element={<CartPage />} />
 
-        <Route path="/account" element={<AccountLayout />}>
+        <Route
+          path="/account"
+          element={
+            <RequireAuth>
+              <AccountLayout />
+            </RequireAuth>
+          }
+        >
           <Route index element={<Navigate to="/account/orders" replace />} />
           <Route path="orders" element={<AccountOrdersPage />} />
           <Route path="orders/:orderId" element={<AccountOrderDetailsPage />} />
@@ -48,7 +68,13 @@ function App() {
         </Route>
       </Route>
 
-      <Route element={<CheckoutLayout />}>
+      <Route 
+        element={
+          <RequireAuth>
+            <CheckoutLayout/>
+          </RequireAuth>
+        }
+      >
         <Route path="/checkout" element={<CheckoutInformationPage />} />
         <Route path="/checkout/delivery" element={<CheckoutDeliveryPage />} />
         <Route path="/checkout/review" element={<CheckoutReviewPage />} />
@@ -57,6 +83,13 @@ function App() {
           element={<CheckoutConfirmationPage />}
         />
       </Route>
+
+      <Route element={<AuthLayout />}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+      </Route>
+
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

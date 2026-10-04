@@ -1,5 +1,11 @@
-import { products } from '../data/products';
+import { seedIfEmpty } from '../data/store';
+import { products as productsSeed } from '../data/products';
 import { getCategoryName } from '../data/categories';
+
+function getAll() {
+  const stored = seedIfEmpty('products', productsSeed);
+  return Array.isArray(stored) ? stored : productsSeed;
+}
 
 /*
  * Fetch products, optionally filtered.
@@ -11,7 +17,7 @@ export async function getProducts(filters = {}) {
   const { category, brand, q, sort } = filters;
   const query = (q ?? '').trim().toLowerCase();
 
-  let result = products;
+  let result = getAll();
 
   // Filtering
   if (category || brand || query) {
@@ -45,10 +51,8 @@ export async function getProducts(filters = {}) {
 }
 
 // Search matching — checks name, part number, brand, category name,
-// description, and spec values. Category is checked by display name,
-// not slug, so searching "GPUs" works even though products store "gpus".
+// description, and spec values.
 function matchesQuery(product, query) {
-
   const categoryName = getCategoryName(product.category).toLowerCase();
   const specValues = Object.values(product.specs ?? {})
     .join(' ')
@@ -70,25 +74,25 @@ function matchesQuery(product, query) {
 }
 
 export async function getProductById(id) {
-  return products.find((p) => p.id === Number(id)) ?? null;
+  return getAll().find((p) => p.id === Number(id)) ?? null;
 }
 
 export async function getFeatured(limit = 5) {
-  return products.filter((p) => p.isFeatured).slice(0, limit);
+  return getAll().filter((p) => p.isFeatured).slice(0, limit);
 }
 
 export async function getLatest(limit = 5) {
-  return [...products]
+  return [...getAll()]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, limit);
 }
 
 export async function getBrands() {
-  return [...new Set(products.map((p) => p.brand))].sort();
+  return [...new Set(getAll().map((p) => p.brand))].sort();
 }
 
 export async function getRelated(product, limit = 4) {
-  const pool = products.filter((p) => p.id !== product.id);
+  const pool = getAll().filter((p) => p.id !== product.id);
 
   const sameCategoryAndBrand = pool.filter(
     (p) => p.category === product.category && p.brand === product.brand

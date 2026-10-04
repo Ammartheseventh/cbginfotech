@@ -18,9 +18,11 @@ export default function OrdersPage() {
   
   const user = useAuthStore((s) => s.user);
   const orders = useOrderStore((s) => s.orders);
-  const userOrders = orders
-    .filter((o) => o.userId === user.id)
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const userOrders = user
+    ? orders
+      .filter((o) => o.userId === user.id)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    : [];
 
   if (userOrders.length === 0) {
     return (

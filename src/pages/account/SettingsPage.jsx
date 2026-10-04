@@ -7,7 +7,7 @@ export default function SettingsPage() {
   usePageTitle('Settings');
   
   const user = useAuthStore((s) => s.user);
-  const updateUser = useAuthStore((s) => s.updateUser);
+  const updateProfile = useAuthStore((s) => s.updateProfile);
   const showToast = useToastStore((s) => s.show);
 
   const [form, setForm] = useState(() => ({
@@ -36,18 +36,23 @@ export default function SettingsPage() {
     form.email !== user?.email ||
     form.phone !== user?.phone;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const next = validate();
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
-    updateUser({
-      name: form.name.trim(),
-      email: form.email.trim(),
-      phone: form.phone.trim(),
-    });
-    showToast('Settings saved');
+    try {
+      await updateProfile({
+        name: form.name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+      });
+      showToast('Settings saved');
+    } catch (err) {
+      // updateProfile sets store.error on failure; surface it as a toast.
+      showToast(err.message ?? 'Could not save settings');
+    }
   };
 
   return (

@@ -57,7 +57,7 @@ export default function BrandAccordion({
           tl.to(
             logo,
             {
-              opacity: isActive ? 1 : 0.65,
+              opacity: isActive ? 1 : 0.7,
               scale: isActive ? 1 : 0.6,
               duration: dur,
               ease,
@@ -122,16 +122,11 @@ export default function BrandAccordion({
           <a
             key={item.name}
             href={item.link}
-            className="shrink-0 snap-start w-24 h-24 sm:h-28 sm:min-w-24 sm:max-w-40 sm:flex-1 rounded-xl border border-gray-200 bg-gray-50 hover:border-gray-300 transition-colors flex items-center justify-center p-4 no-underline outline-none focus-visible:ring-2 focus-visible:ring-black"
+            className="group shrink-0 snap-start w-24 h-24 sm:h-28 sm:min-w-24 sm:max-w-40 sm:flex-1 rounded-xl transition-colors flex items-center justify-center p-4 no-underline outline-none focus-visible:ring-2 focus-visible:ring-black bg-transparent"
             aria-label={item.name}
             role="listitem"
           >
-            <img
-              src={item.logo}
-              alt={item.name}
-              className="w-full h-full object-contain select-none"
-              draggable="false"
-            />
+            <LogoCrossFade item={item} />
           </a>
         ))}
       </div>
@@ -160,7 +155,7 @@ export default function BrandAccordion({
                 group relative block min-w-0 min-h-0 flex-[1_1_0]
                 max-xl:min-w-18 max-xl:shrink-0 max-xl:snap-start
                 cursor-pointer overflow-hidden
-                bg-gray-50 border border-gray-200 hover:border-gray-300
+                bg-transparent
                 transition-colors no-underline outline-none
                 focus-visible:ring-2 focus-visible:ring-black
                 ${brandClassName}
@@ -181,23 +176,50 @@ export default function BrandAccordion({
                 ref={(el) => (logoRefs.current[i] = el)}
                 className="absolute inset-0 flex items-center justify-center pointer-events-none"
                 style={{
-                  opacity: isActive ? 1 : 0.65,
-                  paddingLeft: isActive? '12px' : '0',
-                  paddingRight: isActive? '12px' : '0'
-                 }}
+                  opacity: isActive ? 1 : 0.7,
+                  paddingLeft: isActive ? '12px' : '0',
+                  paddingRight: isActive ? '12px' : '0',
+                }}
               >
-                <img
-                  src={item.logo}
-                  alt={item.name}
-                  draggable="false"
-                  className="w-full h-full max-h-28 object-contain select-none"
-                  style={{ WebkitUserDrag: 'none' }}
-                />
+                <LogoCrossFade item={item} className="max-h-28" />
               </span>
             </a>
           );
         })}
       </div>
     </>
+  );
+}
+
+/**
+ * Renders the monochrome logo with the colored logo stacked on top.
+ * The colored one fades in on hover (via the parent `group`) or when
+ * the wrapper has opacity 1 (active panel). If no colored logo is
+ * provided, only the monochrome one renders.
+ */
+function LogoCrossFade({ item, className = '' }) {
+  return (
+    <div className={`relative w-full h-full ${className}`}>
+      <img
+        src={item.logo}
+        alt={item.name}
+        draggable="false"
+        className="absolute inset-0 w-full h-full object-contain select-none"
+        style={{ WebkitUserDrag: 'none' }}
+      />
+      {item.coloredLogo && (
+        <img
+          src={item.coloredLogo}
+          alt=""
+          aria-hidden="true"
+          draggable="false"
+          onError={(e) => {
+            e.currentTarget.style.display = 'none';
+          }}
+          className="absolute inset-0 w-full h-full object-contain select-none opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100"
+          style={{ WebkitUserDrag: 'none' }}
+        />
+      )}
+    </div>
   );
 }
