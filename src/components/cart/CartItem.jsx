@@ -1,5 +1,4 @@
 import { useCartStore } from '../../store/useCartStore';
-import { getCategoryName } from '../../data/categories';
 
 export default function CartItem({ item }) {
   const { removeItem, updateQuantity } = useCartStore();
@@ -22,9 +21,7 @@ export default function CartItem({ item }) {
               {item.price * item.quantity}
             </span>
           </div>
-          <p className="text-xs text-gray-500 mt-1">
-            {getCategoryName(item.category)}
-          </p>
+          <p className="text-xs text-gray-500 mt-1">{item.categoryName}</p>
         </div>
 
         <div className="flex items-center justify-between mt-4">

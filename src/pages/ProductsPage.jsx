@@ -1,9 +1,10 @@
 import { useCallback } from 'react';
-import { getProducts, getBrands } from '../api/products';
+import { getProducts } from '../api/products';
+import { getBrandNames } from '../api/brands';
 import { useAsync } from '../hooks/useAsync';
 import { useFilters } from '../hooks/useFilters';
-import { categories } from '../data/categories';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { getCategories } from '../api/categories';
 import ProductCard from '../components/catalog/ProductCard';
 import FilterBar from '../components/catalog/FilterBar';
 
@@ -18,7 +19,8 @@ export default function ProductsPage() {
     [category, brand, q, sort]
   );
   const { data: filtered, loading, error } = useAsync(fetchProducts);
-  const { data: brands } = useAsync(getBrands);
+  const { data: categories } = useAsync(getCategories);
+  const { data: brands } = useAsync(getBrandNames);
 
   const handleSearchChange = useCallback(
     (value) => setFilter('q', value),
@@ -49,7 +51,7 @@ export default function ProductsPage() {
       <h1 className="mb-6 text-2xl font-semibold tracking-tight">All Products</h1>
 
       <FilterBar
-        categories={categories}
+        categories={categories ?? []}
         brands={brands ?? []}
         category={category}
         brand={brand}

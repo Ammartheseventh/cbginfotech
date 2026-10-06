@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useCartStore } from '../../store/useCartStore';
 import { useToastStore } from '../../store/useToastStore';
-import { getCategoryName } from '../../data/categories';
 
 
 export default function ProductCard({ product }) {
@@ -39,9 +38,7 @@ export default function ProductCard({ product }) {
             RM{product.price}
           </span>
         </div>
-        <p className="text-xs text-brand">
-          {getCategoryName(product.category)}
-        </p>
+        <p className="text-xs text-brand">{product.categoryName}</p>
       </div>
 
       <button

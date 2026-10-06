@@ -247,7 +247,7 @@ export default function OrderDetails({ order }) {
               <p>
                 {order.address.city}, {order.address.postal}
               </p>
-              <p>{order.address.province}</p>
+              <p>{order.address.state}</p>
             </>
           ) : (
             <>

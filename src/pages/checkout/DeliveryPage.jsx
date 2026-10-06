@@ -73,7 +73,7 @@ export default function DeliveryPage() {
           }
           right={
             delivery === 'ship' && shipping
-              ? `$${shipping.price}`
+              ? `RM${shipping.price}`
               : null
           }
         />

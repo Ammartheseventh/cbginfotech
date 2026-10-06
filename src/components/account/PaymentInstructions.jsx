@@ -1,8 +1,27 @@
+import { useCallback } from 'react';
 import duitnowQr from '../../assets/duitnow-qr.png';
-import { getPaymentDetails } from '../../data/paymentDetails';
+import { useAsync } from '../../hooks/useAsync';
+import { getPaymentDetails } from '../../api/paymentDetails';
 
 export default function PaymentInstructions({ order }) {
-  const details = getPaymentDetails(order.paymentMethod);
+  const fetchDetails = useCallback(
+    () => getPaymentDetails(order.paymentMethod),
+    [order.paymentMethod]
+  );
+  const { data: details, loading } = useAsync(fetchDetails);
+
+  if (loading) {
+    return (
+      <section className="mb-10">
+        <h2 className="text-xs uppercase tracking-wide text-gray-500 mb-3">
+          Payment instructions
+        </h2>
+        <div className="border border-gray-200 rounded-md p-4 text-sm text-gray-500">
+          Loading…
+        </div>
+      </section>
+    );
+  }
 
   if (!details) {
     return (
@@ -33,7 +52,7 @@ export default function PaymentInstructions({ order }) {
 
       <div className="border border-gray-200 rounded-md p-4 text-sm text-gray-600">
         <p>
-          Transfer <strong className="text-gray-900">{order.total}</strong>{' '}
+          Transfer <strong className="text-gray-900">RM{order.total}</strong>{' '}
           using <strong className="text-gray-900">{details.label}</strong>.
         </p>
 

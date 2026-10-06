@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../store/useCartStore';
 import { useAuthStore } from '../../store/useAuthStore';
-import { categories } from '../../data/categories';
+import { useAsync } from '../../hooks/useAsync';
+import { getCategories } from '../../api/categories';
 import NavMenu from './NavMenu';
 import largeLogo from '../../assets/largeLogo.png';
 import mediumLogo from '../../assets/mediumLogo.png';
@@ -54,6 +55,8 @@ export default function Header() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
+
+  const { data: categories } = useAsync(getCategories);
 
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
@@ -172,7 +175,7 @@ export default function Header() {
               {categoriesOpen && (
                 <div className="absolute left-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden z-50">
                   <ul className="py-1 max-h-96 overflow-y-auto">
-                    {categories.map((c) => (
+                    {(categories ?? []).map((c) => (
                       <li key={c.slug}>
                         <NavLink
                           to={`/products?category=${c.slug}`}

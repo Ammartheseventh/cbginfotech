@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { categories } from '../../data/categories';
+import { useAsync } from '../../hooks/useAsync';
+import { getCategories } from '../../api/categories';
 
 function MenuIcon() {
   return (
@@ -44,6 +45,8 @@ export default function NavMenu() {
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const containerRef = useRef(null);
   const location = useLocation();
+
+  const { data: categories } = useAsync(getCategories);
 
   // Close on route change
   useEffect(() => {
@@ -140,7 +143,7 @@ export default function NavMenu() {
             {/* Categories sublist — expands below the row when open */}
             {categoriesOpen && (
               <ul className="mt-3 flex flex-col border-t border-gray-100 pt-2 px-4">
-                {categories.map((c) => (
+                {(categories ?? []).map((c) => (
                   <li key={c.slug}>
                     <NavLink
                       to={`/products?category=${c.slug}`}

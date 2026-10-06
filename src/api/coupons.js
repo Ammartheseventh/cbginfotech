@@ -1,16 +1,23 @@
-import { coupons } from '../data/coupons';
+import { sanity } from './sanity';
 
 /*
  * Validate a coupon code.
  * Returns the coupon object, or null if invalid.
- *
- * In-memory for now. When the backend is live, this becomes:
- *   return request('/api/coupons/validate', { code });
  */
 export async function validateCoupon(code) {
   const normalized = (code ?? '').trim().toUpperCase();
   if (!normalized) return null;
-  return coupons.find((c) => c.code === normalized) ?? null;
+
+  const doc = await sanity.fetch(
+    `*[_type == 'coupon' && code == $code][0] {
+      code,
+      type,
+      value
+    }`,
+    { code: normalized }
+  );
+
+  return doc ?? null;
 }
 
 /*

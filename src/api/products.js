@@ -1,99 +1,112 @@
-import { seedIfEmpty } from '../data/store';
-import { products as productsSeed } from '../data/products';
-import { getCategoryName } from '../data/categories';
+import { sanity, imageUrl } from './sanity';
 
-function getAll() {
-  const stored = seedIfEmpty('products', productsSeed);
-  return Array.isArray(stored) ? stored : productsSeed;
+// Convert a Sanity spec array [{ key, value }] to an object.
+function specsToObject(specs) {
+  if (!specs || !Array.isArray(specs)) return {};
+  return Object.fromEntries(specs.map((s) => [s.key, s.value]));
 }
 
-/*
- * Fetch products, optionally filtered.
- *
- * In-memory filtering for now. When the backend is live, this becomes:
- *   return request(`/api/products?${new URLSearchParams(filters)}`);
- */
+// Shape a Sanity product document into the shape the frontend expects.
+function shapeProduct(doc) {
+  return {
+    id: doc._id,
+    name: doc.name,
+    slug: doc.slug,
+    partNumber: doc.partNumber,
+    brand: doc.brand ?? '',
+    category: doc.category?.slug ?? '',
+    categoryName: doc.category?.name ?? '',
+    price: doc.price,
+    weight: doc.weight,
+    images: (doc.images ?? []).map(imageUrl).filter(Boolean),
+    description: doc.description,
+    specs: specsToObject(doc.specs),
+    inStock: doc.inStock,
+    isFeatured: doc.isFeatured,
+    createdAt: doc.createdAt,
+  };
+}
+
+const PRODUCT_FIELDS = `
+  _id,
+  name,
+  "slug": slug.current,
+  partNumber,
+  "brand": brand->name,
+  "category": category->{ "slug": slug.current, "name": name },
+  price,
+  weight,
+  images,
+  description,
+  specs,
+  inStock,
+  isFeatured,
+  createdAt
+`;
+
 export async function getProducts(filters = {}) {
   const { category, brand, q, sort } = filters;
-  const query = (q ?? '').trim().toLowerCase();
 
-  let result = getAll();
-
-  // Filtering
-  if (category || brand || query) {
-    result = result.filter((p) => {
-      if (category && p.category !== category) return false;
-      if (brand && p.brand !== brand) return false;
-      if (query && !matchesQuery(p, query)) return false;
-      return true;
-    });
+  const conditions = [];
+  if (category) conditions.push(`category->slug.current == $category`);
+  if (brand) conditions.push(`brand->name == $brand`);
+  if (q) {
+    conditions.push(
+      `(name match $q || partNumber match $q || brand->name match $q || description match $q)`
+    );
   }
 
-  // Sorting (only when explicitly requested)
-  if (sort) {
-    result = [...result].sort((a, b) => {
-      switch (sort) {
-        case 'newest':
-          return new Date(b.createdAt) - new Date(a.createdAt);
-        case 'oldest':
-          return new Date(a.createdAt) - new Date(b.createdAt);
-        case 'price-asc':
-          return a.price - b.price;
-        case 'price-desc':
-          return b.price - a.price;
-        default:
-          return 0;
-      }
-    });
-  }
+  const where = conditions.length ? ` && ${conditions.join(' && ')}` : '';
 
-  return result;
-}
+  let order = '';
+  if (sort === 'newest') order = '| order(createdAt desc)';
+  else if (sort === 'oldest') order = '| order(createdAt asc)';
+  else if (sort === 'price-asc') order = '| order(price asc)';
+  else if (sort === 'price-desc') order = '| order(price desc)';
 
-// Search matching — checks name, part number, brand, category name,
-// description, and spec values.
-function matchesQuery(product, query) {
-  const categoryName = getCategoryName(product.category).toLowerCase();
-  const specValues = Object.values(product.specs ?? {})
-    .join(' ')
-    .toLowerCase();
+  const query = `*[_type == 'product'${where}]${order} { ${PRODUCT_FIELDS} }`;
 
-  const haystack = [
-    product.name,
-    product.partNumber,
-    product.brand,
-    categoryName,
-    product.description,
-    specValues,
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
+  const params = {
+    category,
+    brand,
+    q: q ? `${q}*` : undefined,
+  };
 
-  return haystack.includes(query);
+  const docs = await sanity.fetch(query, params);
+  return docs.map(shapeProduct);
 }
 
 export async function getProductById(id) {
-  return getAll().find((p) => p.id === Number(id)) ?? null;
+  const doc = await sanity.fetch(
+    `*[_type == 'product' && _id == $id][0] { ${PRODUCT_FIELDS} }`,
+    { id }
+  );
+  return doc ? shapeProduct(doc) : null;
 }
 
 export async function getFeatured(limit = 5) {
-  return getAll().filter((p) => p.isFeatured).slice(0, limit);
+  const docs = await sanity.fetch(
+    `*[_type == 'product' && isFeatured == true] | order(createdAt desc) [0...$limit] { ${PRODUCT_FIELDS} }`,
+    { limit }
+  );
+  return docs.map(shapeProduct);
 }
 
 export async function getLatest(limit = 5) {
-  return [...getAll()]
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .slice(0, limit);
-}
-
-export async function getBrands() {
-  return [...new Set(getAll().map((p) => p.brand))].sort();
+  const docs = await sanity.fetch(
+    `*[_type == 'product'] | order(createdAt desc) [0...$limit] { ${PRODUCT_FIELDS} }`,
+    { limit }
+  );
+  return docs.map(shapeProduct);
 }
 
 export async function getRelated(product, limit = 4) {
-  const pool = getAll().filter((p) => p.id !== product.id);
+  const docs = await sanity.fetch(
+    `*[_type == 'product' && _id != $id] { ${PRODUCT_FIELDS} }`,
+    { id: product.id }
+  );
 
+  const pool = docs.map(shapeProduct);
   const sameCategoryAndBrand = pool.filter(
     (p) => p.category === product.category && p.brand === product.brand
   );
@@ -112,7 +125,6 @@ export async function getRelated(product, limit = 4) {
 
   const result = [];
   const seen = new Set();
-
   const addUnique = (list) => {
     for (const p of list) {
       if (result.length >= limit) break;
@@ -127,10 +139,7 @@ export async function getRelated(product, limit = 4) {
   addUnique(sameCategoryOnly);
   addUnique(sameBrandOnly);
   addUnique(featured);
-
-  if (result.length < limit) {
-    addUnique(pool);
-  }
+  if (result.length < limit) addUnique(pool);
 
   return result;
 }

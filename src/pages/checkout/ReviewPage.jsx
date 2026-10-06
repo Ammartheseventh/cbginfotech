@@ -282,7 +282,7 @@ export default function ReviewPage() {
             </span>
             <span className="text-gray-900">
               {delivery === 'ship'
-                ? `${shippingCost}`
+                ? `RM${shippingCost}`
                 : 'Free'}
             </span>
           </div>
