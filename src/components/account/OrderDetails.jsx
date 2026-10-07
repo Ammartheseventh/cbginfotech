@@ -1,14 +1,20 @@
 import { useState, useRef, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useOrderStore } from '../../store/useOrderStore';
 import { useToastStore } from '../../store/useToastStore';
 import PaymentInstructions from './PaymentInstructions';
+import Modal from '../common/Modal';
 
 export default function OrderDetails({ order }) {
+  const navigate = useNavigate();
   const updateOrder = useOrderStore((s) => s.updateOrder);
   const showToast = useToastStore((s) => s.show);
   const fileInputRef = useRef(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [pendingFile, setPendingFile] = useState(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [showLeaveWarning, setShowLeaveWarning] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -17,19 +23,27 @@ export default function OrderDetails({ order }) {
   }, [previewUrl]);
 
   const receipt = order.receipt;
+  const hasReceipt = !!receipt;
+  const hasPending = !!pendingFile;
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (previewUrl) URL.revokeObjectURL(previewUrl);
-
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
     setPendingFile(file);
   };
 
-  const handleSave = () => {
+  const handleCancel = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    setPendingFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleSubmit = () => {
     if (!pendingFile) return;
 
     updateOrder(order.id, {
@@ -39,31 +53,55 @@ export default function OrderDetails({ order }) {
         uploadedAt: new Date().toISOString(),
       },
     });
-    showToast('Receipt uploaded');
-    setPendingFile(null);
-  };
 
-  const handleRemoveReceipt = () => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
     setPendingFile(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-    updateOrder(order.id, {
-      status: 'pending_payment',
-      receipt: null,
-    });
-    showToast('Receipt removed');
+    setShowSuccess(true);
   };
 
-  const handleReplace = () => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl(null);
-    setPendingFile(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-      fileInputRef.current.click();
-    }
+  const handleUploadLaterClick = () => {
+    setShowLeaveWarning(true);
   };
+
+  const handleConfirmLeave = () => {
+    setShowLeaveWarning(false);
+    navigate('/account/orders');
+  };
+
+  const handleUploadNow = () => {
+    setShowLeaveWarning(false);
+    requestAnimationFrame(() => fileInputRef.current?.click());
+  };
+
+  const handleCopyId = async () => {
+    await navigator.clipboard.writeText(order.id);
+    setCopied(true);
+    showToast('Order ID copied to clipboard');
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  let helperText;
+  let buttonLabel = null;
+  let buttonAction = null;
+  let buttonStyle = null;
+
+  if (hasReceipt) {
+    helperText =
+      "Your receipt is being verified. We'll update your order status once it's approved.";
+  } else if (hasPending) {
+    helperText = "We'll verify the receipt and update your order status.";
+    buttonLabel = 'Submit Receipt';
+    buttonAction = handleSubmit;
+    buttonStyle = 'bg-brand text-white hover:bg-brand-dark';
+  } else {
+    helperText =
+      'Your order is placed. You can upload the receipt now, or any time from My Orders.';
+    buttonLabel = 'Upload Later';
+    buttonAction = handleUploadLaterClick;
+    buttonStyle =
+      'border border-gray-300 text-gray-700 hover:border-black hover:bg-black hover:text-white';
+  }
 
   return (
     <>
@@ -74,102 +112,69 @@ export default function OrderDetails({ order }) {
           Payment receipt
         </h2>
 
-        {receipt ? (
-          /* Saved state */
-          <div className="border border-gray-200 rounded-md p-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="text-sm">
-                <p className="text-gray-900 break-all">{receipt.fileName}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Uploaded {new Date(receipt.uploadedAt).toLocaleString()}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleRemoveReceipt}
-                className="text-xs text-gray-500 hover:text-red-600 underline whitespace-nowrap"
-              >
-                Remove
-              </button>
-            </div>
-          </div>
-        ) : (
-          /* Upload flow */
-          <div className="border-2 border-dashed border-gray-300 rounded-md p-4">
-            {pendingFile ? (
-              /* File chosen, not yet saved */
-              <div className="flex items-center gap-4">
-                <div className="w-20 h-20 shrink-0 rounded-md overflow-hidden bg-gray-100">
-                  <img
-                    src={previewUrl}
-                    alt="Receipt preview"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,application/pdf"
+          onChange={handleFileChange}
+          className="sr-only"
+        />
 
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-900 break-all">
-                    {pendingFile.name}
-                  </p>
+        {hasReceipt ? (
+          <div className="border border-gray-200 rounded-md p-4">
+            <p className="text-sm text-gray-900 break-all">
+              {receipt.fileName}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              Uploaded {new Date(receipt.uploadedAt).toLocaleString()}
+            </p>
+          </div>
+        ) : hasPending ? (
+          <div className="border-2 border-dashed border-gray-300 rounded-md p-4">
+            <div className="flex items-center gap-4">
+              <div className="w-20 h-20 shrink-0 rounded-md overflow-hidden bg-gray-100">
+                <img
+                  src={previewUrl}
+                  alt="Receipt preview"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-gray-900 break-all">
+                  {pendingFile.name}
+                </p>
+                <div className="flex items-center gap-3 mt-1">
                   <button
                     type="button"
-                    onClick={handleReplace}
-                    className="text-xs text-gray-500 hover:text-black underline mt-1"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-xs text-gray-500 hover:text-black underline"
                   >
                     Choose a different file
                   </button>
-                </div>
-
-                <div className="flex flex-col gap-2 shrink-0">
                   <button
                     type="button"
-                    onClick={handleSave}
-                    className="px-4 py-2 bg-brand text-white text-xs font-medium rounded-md hover:bg-brand-dark transition-colors"
-                  >
-                    Save receipt
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (previewUrl) URL.revokeObjectURL(previewUrl);
-                      setPreviewUrl(null);
-                      setPendingFile(null);
-                      if (fileInputRef.current) fileInputRef.current.value = '';
-                    }}
+                    onClick={handleCancel}
                     className="text-xs text-gray-500 hover:text-black underline"
                   >
                     Cancel
                   </button>
                 </div>
               </div>
-            ) : (
-              /* Empty: click to pick */
-              <label className="flex items-center gap-4 cursor-pointer">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*,application/pdf"
-                  onChange={handleFileChange}
-                  className="sr-only"
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900">
-                    Click to upload receipt
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Image or PDF, up to 10MB
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  disabled
-                  className="shrink-0 px-4 py-2 bg-brand text-white text-xs font-medium rounded-md opacity-40 cursor-not-allowed"
-                >
-                  Save receipt
-                </button>
-              </label>
-            )}
+            </div>
           </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="block w-full border-2 border-dashed border-gray-300 hover:border-gray-400 rounded-md p-6 text-center transition-colors"
+          >
+            <p className="text-sm font-medium text-gray-900">
+              Click to upload receipt
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              Image or PDF, up to 10MB
+            </p>
+          </button>
         )}
       </section>
 
@@ -260,6 +265,129 @@ export default function OrderDetails({ order }) {
           )}
         </div>
       </section>
+
+      <div className="flex flex-col items-center gap-3 mb-4">
+        <p className="text-xs text-gray-500 text-center max-w-sm">
+          {helperText}
+        </p>
+        {buttonLabel && (
+          <button
+            type="button"
+            onClick={buttonAction}
+            className={`px-6 py-3 text-sm font-medium rounded-md transition-colors ${buttonStyle}`}
+          >
+            {buttonLabel}
+          </button>
+        )}
+        {hasReceipt && (
+          <Link
+            to="/account/orders"
+            className="text-xs text-gray-500 hover:text-black underline"
+          >
+            Back to orders
+          </Link>
+        )}
+      </div>
+
+      <Modal isOpen={showLeaveWarning} onClose={() => setShowLeaveWarning(false)}>
+        <div>
+          <h2 className="text-xl font-semibold tracking-tight">
+            Order not yet confirmed
+          </h2>
+          <p className="text-sm text-gray-500 mt-3">
+            We can't process your order until we receive your payment receipt.
+            You can upload it now, or later from My Orders.
+          </p>
+          <div className="flex flex-col gap-2 mt-6">
+            <button
+              type="button"
+              onClick={handleUploadNow}
+              className="w-full py-2.5 bg-brand text-white text-sm font-medium rounded-md hover:bg-brand-dark transition-colors"
+            >
+              Upload Now
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmLeave}
+              className="w-full py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:border-black transition-colors"
+            >
+              Upload Later
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={showSuccess} onClose={() => setShowSuccess(false)}>
+        <div className="text-center">
+          <div className="text-4xl mb-3">✓</div>
+          <h2 className="text-xl font-semibold tracking-tight">
+            Order Confirmed
+          </h2>
+          <p className="text-sm text-gray-500 mt-2">
+            Thank you, {order.customer.name.split(' ')[0]}. Your order ID is
+          </p>
+          <div className="mt-2 flex items-center justify-center gap-2">
+            <span className="text-lg font-mono">{order.id}</span>
+            <button
+              type="button"
+              onClick={handleCopyId}
+              aria-label={copied ? 'Copied' : 'Copy order ID'}
+              className="text-gray-500 hover:text-black transition-colors"
+            >
+              {copied ? <CheckIcon /> : <CopyIcon />}
+            </button>
+          </div>
+          <p className="text-sm text-gray-500 mt-4">
+            We're verifying your payment receipt. You'll hear from us once it's
+            approved.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setShowSuccess(false);
+              navigate('/account/orders');
+            }}
+            className="mt-6 px-6 py-2 bg-brand text-white text-sm font-medium rounded-md hover:bg-brand-dark"
+          >
+            Done
+          </button>
+        </div>
+      </Modal>
     </>
+  );
+}
+
+function CopyIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
   );
 }

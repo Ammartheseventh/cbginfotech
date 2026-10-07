@@ -52,8 +52,8 @@ export default function PaymentInstructions({ order }) {
 
       <div className="border border-gray-200 rounded-md p-4 text-sm text-gray-600">
         <p>
-          Transfer <strong className="text-gray-900">RM{order.total}</strong>{' '}
-          using <strong className="text-gray-900">{details.label}</strong>.
+          Please transfer <strong className="text-gray-900">RM{order.total}</strong>{' '}
+          using <strong className="text-gray-900">{details.label}</strong>, then upload your payment receipt below.
         </p>
 
         {details.type === 'qr' && (

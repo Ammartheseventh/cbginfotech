@@ -87,11 +87,18 @@ export default function OrdersPage() {
 
                   <div className="flex items-end justify-between gap-4 mt-4">
                     <OrderCardStack items={order.items} />
-                    <span
-                      className={`text-xs font-medium ${status.className}`}
-                    >
-                      {status.label}
-                    </span>
+                    <div className="text-right">
+                      <span
+                        className={`text-xs font-medium ${status.className}`}
+                      >
+                        {status.label}
+                      </span>
+                      {order.status === 'awaiting_payment_receipt' && (
+                        <p className="text-xs text-brand mt-0.5">
+                          Tap to upload receipt
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </Link>

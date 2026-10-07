@@ -2,7 +2,7 @@ const steps = [
   { key: 'information', label: 'Information', path: '/checkout' },
   { key: 'delivery', label: 'Delivery', path: '/checkout/delivery' },
   { key: 'review', label: 'Review', path: '/checkout/review' },
-  { key: 'confirmation', label: 'Confirmation', path: null },
+  { key: 'payment', label: 'Payment', path: null },
 ];
 
 export default function CheckoutSteps({ current }) {

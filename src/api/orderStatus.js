@@ -1,10 +1,10 @@
 export const ORDER_STATUS = {
-  pending_payment: {
-    label: 'Pending payment',
+  awaiting_payment_receipt: {
+    label: 'Awaiting payment receipt',
     className: 'text-amber-700',
   },
   verifying: {
-    label: 'Verifying payment',
+    label: 'Verifying receipt',
     className: 'text-amber-700',
   },
   shipping: {
@@ -26,5 +26,5 @@ export const ORDER_STATUS = {
 };
 
 export function getOrderStatus(status) {
-  return ORDER_STATUS[status] ?? ORDER_STATUS.pending_payment;
+  return ORDER_STATUS[status] ?? ORDER_STATUS.awaiting_payment_receipt;
 }

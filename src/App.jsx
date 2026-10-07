@@ -17,7 +17,7 @@ import NotFoundPage from './pages/NotFoundPage';
 import CheckoutInformationPage from './pages/checkout/InformationPage';
 import CheckoutDeliveryPage from './pages/checkout/DeliveryPage';
 import CheckoutReviewPage from './pages/checkout/ReviewPage';
-import CheckoutConfirmationPage from './pages/checkout/ConfirmationPage';
+import CheckoutPaymentPage from './pages/checkout/PaymentPage';
 import AccountOrdersPage from './pages/account/OrdersPage';
 import AccountOrderDetailsPage from './pages/account/OrderDetailsPage';
 import AccountAddressesPage from './pages/account/AddressesPage';
@@ -79,8 +79,8 @@ function App() {
         <Route path="/checkout/delivery" element={<CheckoutDeliveryPage />} />
         <Route path="/checkout/review" element={<CheckoutReviewPage />} />
         <Route
-          path="/checkout/confirmation/:orderId"
-          element={<CheckoutConfirmationPage />}
+          path="/checkout/payment/:orderId"
+          element={<CheckoutPaymentPage />}
         />
       </Route>
 

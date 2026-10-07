@@ -59,7 +59,7 @@ export default function ReviewPage() {
 
     const orderId = addOrder({
       userId: user.id,
-      status: 'pending_payment',
+      status: 'awaiting_payment_receipt',
       customer: {
         name: info.name,
         email: info.email,
@@ -85,7 +85,7 @@ export default function ReviewPage() {
 
     clearCart();
     resetCheckout();
-    navigate(`/checkout/confirmation/${orderId}`);
+    navigate(`/checkout/payment/${orderId}`);
   };
 
   return (
@@ -340,7 +340,7 @@ export default function ReviewPage() {
           disabled={!canSubmit}
           className="px-6 py-3 bg-brand text-white text-sm font-medium rounded-md hover:bg-brand-dark disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {submitting ? 'Placing order…' : 'Place Order'}
+          {submitting ? 'Placing order…' : 'Proceed to Payment'}
         </button>
       </div>
     </div>
