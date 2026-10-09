@@ -4,6 +4,7 @@ import { useCheckoutStore } from '../../store/useCheckoutStore';
 import { useCartStore } from '../../store/useCartStore';
 import { useOrderStore } from '../../store/useOrderStore';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useToastStore } from '../../store/useToastStore';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import CheckoutSteps from '../../components/checkout/CheckoutSteps';
 import CouponInput from '../../components/cart/CouponInput';
@@ -29,6 +30,8 @@ export default function ReviewPage() {
   const user = useAuthStore((s) => s.user);
   const coupon = useCartStore((s) => s.coupon);
 
+  const showToast = useToastStore((s) => s.show);
+
   const [paymentMethod, setPaymentMethod] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -53,39 +56,44 @@ export default function ReviewPage() {
 
   const canSubmit = paymentMethod && agreed && !submitting;
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
 
-    const orderId = addOrder({
-      userId: user.id,
-      status: 'awaiting_payment_receipt',
-      customer: {
-        name: info.name,
-        email: info.email,
-        phone: info.phone,
-      },
-      address: delivery === 'ship' ? info.address : null,
-      delivery,
-      items: items.map((i) => ({
-        id: i.id,
-        name: i.name,
-        price: i.price,
-        quantity: i.quantity,
-        images: i.images,
-      })),
-      subtotal,
-      discount,
-      coupon,
-      shipping: shippingCost,
-      total,
-      paymentMethod,
-      receipt: null,
-    });
+    try {
+      const orderId = await addOrder({
+        userId: user.id,
+        status: 'awaiting_payment_receipt',
+        customer: {
+          name: info.name,
+          email: info.email,
+          phone: info.phone,
+        },
+        address: delivery === 'ship' ? info.address : null,
+        delivery,
+        items: items.map((i) => ({
+          id: i.id,
+          name: i.name,
+          price: i.price,
+          quantity: i.quantity,
+          images: i.images,
+        })),
+        subtotal,
+        discount,
+        coupon,
+        shipping: shippingCost,
+        total,
+        paymentMethod,
+      });
 
-    clearCart();
-    resetCheckout();
-    navigate(`/checkout/payment/${orderId}`);
+      clearCart();
+      resetCheckout();
+      navigate(`/checkout/payment/${orderId}`);
+    } catch (err) {
+      // Surface the error to the user using a toast notification
+      showToast(err.message ?? 'Could not place order');
+      setSubmitting(false);
+    }
   };
 
   return (

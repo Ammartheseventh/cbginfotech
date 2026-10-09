@@ -1,179 +1,118 @@
 // src/api/auth.js
 //
-// The auth API. When the backend arrives, every function here becomes a
-// fetch() call. The function signatures, return shapes, and error
-// behavior are designed to match what a real API would do.
+// Auth API backed by Supabase. Function signatures match the previous
+// mock so that useAuthStore and the pages barely need to change.
 
-import { write, seedIfEmpty } from '../data/store';
-import { usersSeed } from '../data/users';
-import { getSession, setSession, clearSession } from '../data/session';
+import { supabase } from './supabase';
 
-const USERS_KEY = 'users';
-
-function getAllUsers() {
-  return seedIfEmpty(USERS_KEY, usersSeed);
-}
-
-function hashPassword(password) {
-  // Mock hashing.
-  return `mock:${password}`;
-}
-
-function verifyPassword(password, hash) {
-  return hashPassword(password) === hash;
-}
-
-function generateToken() {
-  // A fake token. Real tokens are JWTs signed by the server. Format
-  // doesn't matter here, only that it's an opaque string.
-  return `mock-token-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
-function publicUser(user) {
-  // Strip passwordHash before returning a user to the client.
-  // Real APIs never send password hashes over the wire.
+// Shape the auth user + profile row into the frontend user object.
+function frontendUser(authUser, profile) {
   return {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    phone: user.phone ?? '',
-    role: user.role,
+    id: authUser.id,
+    name: profile?.name ?? authUser.user_metadata?.name ?? '',
+    email: authUser.email,
+    phone: profile?.phone ?? '',
+    role: profile?.role ?? 'customer',
   };
+}
+
+// Fetch the profiles row for a given user ID.
+async function fetchProfile(userId) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('name, phone, role')
+    .eq('id', userId)
+    .single();
+  if (error) return null;
+  return data;
 }
 
 /*
  * Log in with email and password.
- * Returns { token, user }. Throws on invalid credentials.
+ * Returns { user }. Throws on invalid credentials.
  */
 export async function login(email, password) {
-  // Simulate network latency so loading states are real.
-  await new Promise((r) => setTimeout(r, 400));
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+  if (error) throw new Error(error.message);
 
-  const user = getAllUsers().find(
-    (u) => u.email.toLowerCase() === email.toLowerCase()
-  );
-
-  // Same error for "no user" and "wrong password". prevents user enumeration.
-  if (!user || !verifyPassword(password, user.passwordHash)) {
-    throw new Error('Invalid email or password');
-  }
-
-  const session = {
-    token: generateToken(),
-    userId: user.id,
-    expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 7, // 7 days
-  };
-  setSession(session);
-
-  return {
-    token: session.token,
-    user: publicUser(user),
-  };
+  const profile = await fetchProfile(data.user.id);
+  return { user: frontendUser(data.user, profile) };
 }
 
 /*
  * Register a new customer account.
- * Returns { token, user } and logs the user in.
+ *
+ * Email confirmation is enabled on the Supabase project, so signUp does
+ * not log the user in. Instead it sends a confirmation email. The caller
+ * must handle the needsConfirmation case and show a check-your-email screen.
  */
 export async function register(name, email, password) {
-  await new Promise((r) => setTimeout(r, 400));
-
-  const all = getAllUsers();
-  if (all.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
-    throw new Error('Email already registered');
-  }
-
-  const newUser = {
-    id: Math.max(0, ...all.map((u) => u.id)) + 1,
-    name,
+  const { data, error } = await supabase.auth.signUp({
     email,
-    passwordHash: hashPassword(password),
-    role: 'customer',
-    createdAt: new Date().toISOString(),
+    password,
+    options: {
+      emailRedirectTo: `${window.location.origin}/login`,
+      data: { name },
+    },
+  });
+  if (error) throw new Error(error.message);
+
+  return {
+    user: data.user,
+    needsConfirmation: !data.session,
   };
-
-  write(USERS_KEY, [...all, newUser]);
-
-  return login(email, password);
 }
 
-
-// Clear the current session.
-
+/*
+ * Sign out the current user.
+ */
 export async function logout() {
-  await new Promise((r) => setTimeout(r, 100));
-  clearSession();
+  const { error } = await supabase.auth.signOut();
+  if (error) throw new Error(error.message);
 }
 
 /*
  * Return the currently authenticated user, or null.
- * Checks token expiry and clears the session if it's stale.
  */
 export async function getCurrentUser() {
-  const session = getSession();
-  if (!session) return null;
+  const {
+    data: { user: authUser },
+    error,
+  } = await supabase.auth.getUser();
+  if (error || !authUser) return null;
 
-  if (session.expiresAt < Date.now()) {
-    clearSession();
-    return null;
-  }
-
-  const user = getAllUsers().find((u) => u.id === session.userId);
-  if (!user) {
-    clearSession();
-    return null;
-  }
-
-  return publicUser(user);
+  const profile = await fetchProfile(authUser.id);
+  return frontendUser(authUser, profile);
 }
 
 /*
- * Update the current user's profile fields (name, email, phone).
- * Phone is optional and stored on the user record.
- * Returns the updated public user.
+ * Update the current user's profile fields.
+ * Email changes go through a separate Supabase flow and are not supported here.
  */
 export async function updateProfile(patch) {
-  await new Promise((r) => setTimeout(r, 200));
+  const {
+    data: { user: authUser },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !authUser) throw new Error('Not authenticated');
 
-  const session = getSession();
-  if (!session || session.expiresAt < Date.now()) {
-    throw new Error('Not authenticated');
+  if (patch.email && patch.email !== authUser.email) {
+    throw new Error('Email changes are not supported yet');
   }
 
-  const all = getAllUsers();
-  const index = all.findIndex((u) => u.id === session.userId);
-  if (index === -1) throw new Error('User not found');
+  const updates = {};
+  if (patch.name !== undefined) updates.name = patch.name;
+  if (patch.phone !== undefined) updates.phone = patch.phone;
 
-  const current = all[index];
+  const { error: updateError } = await supabase
+    .from('profiles')
+    .update(updates)
+    .eq('id', authUser.id);
+  if (updateError) throw new Error(updateError.message);
 
-  // If email is changing, ensure it's not taken by someone else.
-  if (patch.email && patch.email.toLowerCase() !== current.email.toLowerCase()) {
-    const taken = all.some(
-      (u) => u.id !== current.id && u.email.toLowerCase() === patch.email.toLowerCase()
-    );
-    if (taken) throw new Error('Email already registered');
-  }
-
-  const updated = {
-    ...current,
-    name: patch.name ?? current.name,
-    email: patch.email ?? current.email,
-    phone: patch.phone ?? current.phone ?? '',
-  };
-
-  const next = [...all];
-  next[index] = updated;
-  write(USERS_KEY, next);
-
-  return publicUser(updated);
-}
-
-/*
- * Return the current token, or null. Used by other API modules to
- * attach an Authorization header when the backend arrives.
- */
-export async function getToken() {
-  const session = getSession();
-  if (!session || session.expiresAt < Date.now()) return null;
-  return session.token;
+  const profile = await fetchProfile(authUser.id);
+  return frontendUser(authUser, profile);
 }

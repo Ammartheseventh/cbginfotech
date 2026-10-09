@@ -19,6 +19,7 @@ export default function RegisterPage() {
   });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(null);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -48,14 +49,54 @@ export default function RegisterPage() {
 
     setSubmitting(true);
     try {
-      await register(form.name.trim(), form.email.trim(), form.password);
-      navigate('/', { replace: true });
+      const result = await register(
+        form.name.trim(),
+        form.email.trim(),
+        form.password
+      );
+      if (result.needsConfirmation) {
+        setAwaitingConfirmation(form.email.trim());
+      } else {
+        navigate('/', { replace: true });
+      }
     } catch {
       // Error already set in the store.
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (awaitingConfirmation) {
+    return (
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight mb-1">
+          Check your email
+        </h1>
+        <p className="text-sm text-gray-500 mb-8">
+          We sent a confirmation link to{' '}
+          <span className="text-gray-900">{awaitingConfirmation}</span>.
+        </p>
+
+        <div className="border border-gray-200 rounded-md p-4 text-sm text-gray-600 leading-relaxed">
+          <p>Click the link in the email to confirm your account.</p>
+          <p className="mt-2">
+            Once confirmed, you can{' '}
+            <Link
+              to="/login"
+              className="text-gray-900 underline hover:text-brand transition-colors"
+            >
+              log in
+            </Link>
+            .
+          </p>
+        </div>
+
+        <p className="text-xs text-gray-500 mt-6 text-center">
+          Didn't get the email? Check your spam folder.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div>

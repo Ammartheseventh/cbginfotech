@@ -1,11 +1,11 @@
 // src/store/useAuthStore.js
 //
-// Reactive wrapper around api/auth. Holds the current user, exposes
-// login/register/logout/updateProfile actions. Components subscribe via
-// useAuthStore((s) => s.user) and re-render when the user changes.
+// Reactive wrapper around api/auth, backed by Supabase.
+// Holds the current user and exposes login/register/logout/updateProfile.
 //
-// No persist middleware: the session is stored in localStorage by
-// data/session.js, and we rehydrate via refresh() on app load.
+// Supabase manages session persistence. We don't use localStorage ourselves
+// and don't use zustand/persist. On app load, App.jsx calls refresh() once,
+// and Supabase's client restores the session from its own storage.
 
 import { create } from 'zustand';
 import * as authApi from '../api/auth';
@@ -36,9 +36,13 @@ export const useAuthStore = create((set) => ({
   register: async (name, email, password) => {
     set({ error: null });
     try {
-      const { user } = await authApi.register(name, email, password);
-      set({ user });
-      return user;
+      const result = await authApi.register(name, email, password);
+      if (result.needsConfirmation) {
+        // Not logged in yet. RegisterPage handles the confirmation screen.
+        return { needsConfirmation: true };
+      }
+      set({ user: result.user });
+      return { needsConfirmation: false, user: result.user };
     } catch (err) {
       set({ error: err.message });
       throw err;

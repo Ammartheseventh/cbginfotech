@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useOrderStore } from '../../store/useOrderStore';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -16,11 +17,42 @@ function formatDate(iso) {
 export default function OrderDetailPage() {
   const { orderId } = useParams();
   const user = useAuthStore((s) => s.user);
-  const order = useOrderStore((s) =>
-    s.orders.find((o) => o.id === orderId)
-  );
+  const fetchOrderById = useOrderStore((s) => s.fetchOrderById);
+  const [order, setOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   usePageTitle(order?.id ?? 'Order');
+
+  useEffect(() => {
+    let cancelled = false;
+    // Resetting loading for a new orderId is intrinsic to fetching.
+    // The rule discourages this pattern, but it's correct here.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true);
+    fetchOrderById(orderId).then((result) => {
+      if (!cancelled) {
+        setOrder(result);
+        setLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [orderId, fetchOrderById]);
+
+  if (loading) {
+    return (
+      <div>
+        <Link
+          to="/account/orders"
+          className="text-xs text-gray-500 hover:text-black underline"
+        >
+          ← Back to orders
+        </Link>
+        <p className="text-sm text-gray-500 mt-6">Loading…</p>
+      </div>
+    );
+  }
 
   if (!order || !user || order.userId !== user.id) {
     return (

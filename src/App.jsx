@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/useAuthStore';
+import { useAddressStore } from './store/useAddressStore';
+import { useOrderStore } from './store/useOrderStore';
 import Layout from './components/layout/Layout';
 import CheckoutLayout from './components/checkout/CheckoutLayout';
 import AccountLayout from './components/account/AccountLayout';
@@ -27,13 +29,38 @@ import PrivacyPage from './pages/content/PrivacyPage';
 import TermsPage from './pages/content/TermsPage';
 import ReturnsPage from './pages/content/ReturnsPage';
 import ContactPage from './pages/content/ContactPage';
+import AdminLayout from './components/admin/AdminLayout';
+import AdminOrdersListPage from './pages/admin/OrdersListPage';
+import AdminOrderDetailPage from './pages/admin/OrderDetailPage';
+import RequireAdmin from './components/auth/RequireAdmin';
 
 function App() {
+  const user = useAuthStore((s) => s.user);
+  const authLoading = useAuthStore((s) => s.loading);
   const refresh = useAuthStore((s) => s.refresh);
 
+  const fetchAddresses = useAddressStore((s) => s.fetchAddresses);
+  const clearAddresses = useAddressStore((s) => s.clear);
+
+  const fetchOrders = useOrderStore((s) => s.fetchOrders);
+  const clearOrders = useOrderStore((s) => s.clear);
+
+  // Restore the Supabase session on app load.
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // Load addresses and orders when a user logs in, clear them when they log out.
+  useEffect(() => {
+    if (authLoading) return;
+    if (user) {
+      fetchAddresses();
+      fetchOrders();
+    } else {
+      clearAddresses();
+      clearOrders();
+    }
+  }, [user, authLoading, fetchAddresses, clearAddresses, fetchOrders, clearOrders]);
 
   return (
     <Routes>
@@ -68,10 +95,23 @@ function App() {
         </Route>
       </Route>
 
-      <Route 
+      <Route
+        path="/admin"
+        element={
+          <RequireAdmin>
+            <AdminLayout />
+          </RequireAdmin>
+        }
+      >
+        <Route index element={<Navigate to="/admin/orders" replace />} />
+        <Route path="orders" element={<AdminOrdersListPage />} />
+        <Route path="orders/:orderId" element={<AdminOrderDetailPage />} />
+      </Route>
+
+      <Route
         element={
           <RequireAuth>
-            <CheckoutLayout/>
+            <CheckoutLayout />
           </RequireAuth>
         }
       >

@@ -11,17 +11,13 @@ export const ORDER_STATUS = {
     label: 'Being shipped',
     className: 'text-blue-700',
   },
-  preparing_order: {
-    label: 'Preparing order',
-    className: 'text-blue-700',
-  },
   ready_for_pickup: {
     label: 'Ready for pickup',
     className: 'text-green-700',
   },
   received: {
     label: 'Received',
-    className: 'text-gray-500',
+    className: 'text-green-700',
   },
 };
 

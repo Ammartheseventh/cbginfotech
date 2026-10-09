@@ -7,11 +7,12 @@ import Modal from '../common/Modal';
 
 export default function OrderDetails({ order }) {
   const navigate = useNavigate();
-  const updateOrder = useOrderStore((s) => s.updateOrder);
+  const uploadReceipt = useOrderStore((s) => s.uploadReceipt);
   const showToast = useToastStore((s) => s.show);
   const fileInputRef = useRef(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [pendingFile, setPendingFile] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showLeaveWarning, setShowLeaveWarning] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -43,21 +44,21 @@ export default function OrderDetails({ order }) {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleSubmit = () => {
-    if (!pendingFile) return;
+  const handleSubmit = async () => {
+    if (!pendingFile || submitting) return;
+    setSubmitting(true);
 
-    updateOrder(order.id, {
-      status: 'verifying',
-      receipt: {
-        fileName: pendingFile.name,
-        uploadedAt: new Date().toISOString(),
-      },
-    });
-
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl(null);
-    setPendingFile(null);
-    setShowSuccess(true);
+    try {
+      await uploadReceipt(order, pendingFile);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+      setPendingFile(null);
+      setShowSuccess(true);
+    } catch (err) {
+      showToast(err.message ?? 'Could not upload receipt');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleUploadLaterClick = () => {
@@ -91,9 +92,9 @@ export default function OrderDetails({ order }) {
       "Your receipt is being verified. We'll update your order status once it's approved.";
   } else if (hasPending) {
     helperText = "We'll verify the receipt and update your order status.";
-    buttonLabel = 'Submit Receipt';
+    buttonLabel = submitting ? 'Uploading…' : 'Submit Receipt';
     buttonAction = handleSubmit;
-    buttonStyle = 'bg-brand text-white hover:bg-brand-dark';
+    buttonStyle = 'bg-brand text-white hover:bg-brand-dark disabled:opacity-40';
   } else {
     helperText =
       'Your order is placed. You can upload the receipt now, or any time from My Orders.';
@@ -147,14 +148,16 @@ export default function OrderDetails({ order }) {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="text-xs text-gray-500 hover:text-black underline"
+                    disabled={submitting}
+                    className="text-xs text-gray-500 hover:text-black underline disabled:opacity-40"
                   >
                     Choose a different file
                   </button>
                   <button
                     type="button"
                     onClick={handleCancel}
-                    className="text-xs text-gray-500 hover:text-black underline"
+                    disabled={submitting}
+                    className="text-xs text-gray-500 hover:text-black underline disabled:opacity-40"
                   >
                     Cancel
                   </button>
@@ -274,6 +277,7 @@ export default function OrderDetails({ order }) {
           <button
             type="button"
             onClick={buttonAction}
+            disabled={submitting}
             className={`px-6 py-3 text-sm font-medium rounded-md transition-colors ${buttonStyle}`}
           >
             {buttonLabel}
@@ -347,7 +351,7 @@ export default function OrderDetails({ order }) {
               setShowSuccess(false);
               navigate('/account/orders');
             }}
-            className="mt-6 px-6 py-2 bg-brand text-white text-sm font-medium rounded-md hover:bg-brand-dark"
+            className="mt-6 px-6 py-2 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800"
           >
             Done
           </button>

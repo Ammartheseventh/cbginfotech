@@ -5,7 +5,7 @@ import { usePageTitle } from '../../hooks/usePageTitle';
 
 export default function SettingsPage() {
   usePageTitle('Settings');
-  
+
   const user = useAuthStore((s) => s.user);
   const updateProfile = useAuthStore((s) => s.updateProfile);
   const showToast = useToastStore((s) => s.show);
@@ -24,17 +24,11 @@ export default function SettingsPage() {
   const validate = () => {
     const next = {};
     if (!form.name.trim()) next.name = 'Required';
-    if (!form.email.trim()) next.email = 'Required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
-      next.email = 'Invalid email';
     if (!form.phone.trim()) next.phone = 'Required';
     return next;
   };
 
-  const isDirty =
-    form.name !== user?.name ||
-    form.email !== user?.email ||
-    form.phone !== user?.phone;
+  const isDirty = form.name !== user?.name || form.phone !== user?.phone;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -45,7 +39,6 @@ export default function SettingsPage() {
     try {
       await updateProfile({
         name: form.name.trim(),
-        email: form.email.trim(),
         phone: form.phone.trim(),
       });
       showToast('Settings saved');
@@ -75,14 +68,20 @@ export default function SettingsPage() {
             onChange={handleChange}
             error={errors.name}
           />
-          <Field
-            label="Email"
-            name="email"
-            type="email"
-            value={form.email}
-            onChange={handleChange}
-            error={errors.email}
-          />
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm text-gray-700">Email</label>
+            <input
+              type="email"
+              value={form.email}
+              disabled
+              className="px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-50 text-gray-500 cursor-not-allowed"
+            />
+            <span className="text-xs text-gray-400">
+              Email changes are not supported yet.
+            </span>
+          </div>
+
           <Field
             label="Phone"
             name="phone"

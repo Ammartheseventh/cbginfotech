@@ -1,64 +1,149 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+// src/store/useAddressStore.js
+//
+// Address store backed by Supabase. Same public interface as the previous
+// localStorage version, so components don't need to change.
 
-function generateId() {
-  return `addr-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+import { create } from 'zustand';
+import { supabase } from '../api/supabase';
+
+// Convert a Supabase row (snake_case) to the frontend shape (camelCase).
+function fromRow(row) {
+  return {
+    id: row.id,
+    label: row.label,
+    name: row.name,
+    phone: row.phone,
+    street: row.street,
+    city: row.city,
+    state: row.state,
+    postal: row.postal,
+    isDefault: row.is_default,
+  };
 }
 
-export const useAddressStore = create(
-  persist(
-    (set, get) => ({
-      addresses: [],
+// Convert a frontend patch to Supabase columns.
+function toRow(patch) {
+  const row = {};
+  if (patch.label !== undefined) row.label = patch.label;
+  if (patch.name !== undefined) row.name = patch.name;
+  if (patch.phone !== undefined) row.phone = patch.phone;
+  if (patch.street !== undefined) row.street = patch.street;
+  if (patch.city !== undefined) row.city = patch.city;
+  if (patch.state !== undefined) row.state = patch.state;
+  if (patch.postal !== undefined) row.postal = patch.postal;
+  if (patch.isDefault !== undefined) row.is_default = patch.isDefault;
+  return row;
+}
 
-      addAddress: (address) => {
-        const current = get().addresses;
-        const isFirst = current.length === 0;
-        const newAddress = {
-          id: generateId(),
-          ...address,
-          isDefault: isFirst ? true : Boolean(address.isDefault),
-        };
+export const useAddressStore = create((set, get) => ({
+  addresses: [],
+  loading: false,
+  error: null,
 
-        // If adding a new default (and it's not the first), demote the old one
-        let next = current.map((a) =>
-          newAddress.isDefault ? { ...a, isDefault: false } : a
-        );
+  fetchAddresses: async () => {
+    set({ loading: true, error: null });
+    const { data, error } = await supabase
+      .from('addresses')
+      .select('*')
+      .order('created_at', { ascending: true });
+    if (error) {
+      set({ loading: false, error: error.message });
+      return;
+    }
+    set({ addresses: (data ?? []).map(fromRow), loading: false });
+  },
 
-        next = [...next, newAddress];
-        set({ addresses: next });
-        return newAddress.id;
-      },
+  addAddress: async (address) => {
+    const current = get().addresses;
+    const isFirst = current.length === 0;
+    const shouldBeDefault = isFirst || address.isDefault === true;
 
-      updateAddress: (id, patch) => {
-        set((state) => ({
-          addresses: state.addresses.map((a) =>
-            a.id === id ? { ...a, ...patch } : a
-          ),
+    // If this becomes the new default, un-default the previous one first.
+    if (shouldBeDefault && current.some((a) => a.isDefault)) {
+      const { error: clearError } = await supabase
+        .from('addresses')
+        .update({ is_default: false })
+        .eq('is_default', true);
+      if (clearError) throw new Error(clearError.message);
+    }
+
+    const { data, error } = await supabase
+      .from('addresses')
+      .insert({ ...toRow(address), is_default: shouldBeDefault })
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+
+    const created = fromRow(data);
+    set((state) => ({ addresses: [...state.addresses, created] }));
+    return created.id;
+  },
+
+  updateAddress: async (id, patch) => {
+    const { data, error } = await supabase
+      .from('addresses')
+      .update(toRow(patch))
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+
+    const updated = fromRow(data);
+    set((state) => ({
+      addresses: state.addresses.map((a) => (a.id === id ? updated : a)),
+    }));
+  },
+
+  removeAddress: async (id) => {
+    const current = get().addresses;
+    const removed = current.find((a) => a.id === id);
+    const remaining = current.filter((a) => a.id !== id);
+
+    const { error } = await supabase.from('addresses').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+
+    let nextAddresses = remaining;
+
+    // If we removed the default, promote the first remaining address.
+    if (removed?.isDefault && remaining.length > 0) {
+      const promoteId = remaining[0].id;
+      const { error: promoteError } = await supabase
+        .from('addresses')
+        .update({ is_default: true })
+        .eq('id', promoteId);
+      if (!promoteError) {
+        nextAddresses = remaining.map((a) => ({
+          ...a,
+          isDefault: a.id === promoteId,
         }));
-      },
+      }
+    }
 
-      removeAddress: (id) => {
-        const current = get().addresses;
-        const wasDefault = current.find((a) => a.id === id)?.isDefault;
-        let next = current.filter((a) => a.id !== id);
+    set({ addresses: nextAddresses });
+  },
 
-        // If the default was deleted and alternates remain, promote the first
-        if (wasDefault && next.length > 0 && !next.some((a) => a.isDefault)) {
-          next = next.map((a, i) => (i === 0 ? { ...a, isDefault: true } : a));
-        }
+  makeDefault: async (id) => {
+    // Clear the current default first.
+    const { error: clearError } = await supabase
+      .from('addresses')
+      .update({ is_default: false })
+      .eq('is_default', true);
+    if (clearError) throw new Error(clearError.message);
 
-        set({ addresses: next });
-      },
+    const { error: setError } = await supabase
+      .from('addresses')
+      .update({ is_default: true })
+      .eq('id', id);
+    if (setError) throw new Error(setError.message);
 
-      makeDefault: (id) => {
-        set((state) => ({
-          addresses: state.addresses.map((a) => ({
-            ...a,
-            isDefault: a.id === id,
-          })),
-        }));
-      },
-    }),
-    { name: 'address-storage' }
-  )
-);
+    set((state) => ({
+      addresses: state.addresses.map((a) => ({
+        ...a,
+        isDefault: a.id === id,
+      })),
+    }));
+  },
+
+  clear: () => set({ addresses: [], error: null }),
+}));
