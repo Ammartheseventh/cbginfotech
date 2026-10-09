@@ -196,7 +196,7 @@ export default function OrderDetailPage() {
                     disabled={updating}
                     className="text-xs text-gray-500 hover:text-brand underline transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    Revert to {ORDER_STATUS[s] ?? s}
+                    Revert to {ORDER_STATUS[s]?.label ?? s}
                   </button>
                 ))}
               </div>

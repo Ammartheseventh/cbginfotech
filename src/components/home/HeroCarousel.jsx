@@ -26,7 +26,7 @@ const ROTATE_MS = 4000;
 const TRANSITION_MS = 700;
 const REFERENCE_SIZE = 100;
 
-const MOBILE_MIN = 22;
+const MOBILE_MIN = 14;
 const MOBILE_MAX = 40;
 const DESKTOP_MIN = 36;
 const DESKTOP_MAX = 72;
