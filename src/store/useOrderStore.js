@@ -53,6 +53,28 @@ function toInsertRow(orderData) {
   };
 }
 
+// Calls the Supabase Edge Function that emails the admin about a new
+// payment receipt. Uses the caller's session for auth, so the function
+// can verify the caller owns the order.
+async function notifyPayment(orderId) {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return;
+
+    await supabase.functions.invoke('notify-payment', {
+      body: { orderId },
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+  } catch {
+    // Silently ignore — the notification is a convenience, not a
+    // blocker. The receipt is already saved.
+  }
+}
+
 export const useOrderStore = create((set, get) => ({
   orders: [],
   loading: false,
@@ -136,6 +158,10 @@ export const useOrderStore = create((set, get) => ({
     set((state) => ({
       orders: state.orders.map((o) => (o.id === order.id ? updated : o)),
     }));
+
+    // Fire and forget: notify the admin of the new payment receipt
+    notifyPayment(order.id);
+
     return updated;
   },
 
@@ -147,6 +173,35 @@ export const useOrderStore = create((set, get) => ({
       .eq('id', id)
       .select()
       .single();
+    if (error) throw new Error(error.message);
+
+    const updated = fromRow(data);
+    set((state) => ({
+      orders: state.orders.map((o) => (o.id === id ? updated : o)),
+    }));
+    return updated;
+  },
+
+  // Mark an order as received and delete its receipt.
+  completeOrder: async (id, currentReceiptPath) => {
+    
+    if (currentReceiptPath) {
+      await supabase.storage.from('receipts').remove([currentReceiptPath]);
+    }
+
+    // Update the order: set status to received, clear receipt columns.
+    const { data, error } = await supabase
+      .from('orders')
+      .update({
+        status: 'received',
+        receipt_path: null,
+        receipt_file_name: null,
+        receipt_uploaded_at: null,
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
     if (error) throw new Error(error.message);
 
     const updated = fromRow(data);

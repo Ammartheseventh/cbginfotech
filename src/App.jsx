@@ -32,6 +32,7 @@ import ContactPage from './pages/content/ContactPage';
 import AdminLayout from './components/admin/AdminLayout';
 import AdminOrdersListPage from './pages/admin/OrdersListPage';
 import AdminOrderDetailPage from './pages/admin/OrderDetailPage';
+import AdminCompletedOrdersPage from './pages/admin/CompletedOrdersPage';
 import RequireAdmin from './components/auth/RequireAdmin';
 
 function App() {
@@ -105,6 +106,7 @@ function App() {
       >
         <Route index element={<Navigate to="/admin/orders" replace />} />
         <Route path="orders" element={<AdminOrdersListPage />} />
+        <Route path="orders/completed" element={<AdminCompletedOrdersPage />} />
         <Route path="orders/:orderId" element={<AdminOrderDetailPage />} />
       </Route>
 

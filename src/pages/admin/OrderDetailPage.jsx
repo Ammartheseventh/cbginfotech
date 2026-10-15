@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useOrderStore } from '../../store/useOrderStore';
 import { useToastStore } from '../../store/useToastStore';
 import { getReceiptSignedUrl } from '../../api/storage';
 import { getOrderStatus, ORDER_STATUS } from '../../api/orderStatus';
 import { usePageTitle } from '../../hooks/usePageTitle';
+import Modal from '../../components/common/Modal';
 
 function formatDate(iso) {
   return new Date(iso).toLocaleString('en-US', {
@@ -16,9 +17,6 @@ function formatDate(iso) {
   });
 }
 
-// Forward transitions depend on the order's delivery method:
-// pickup orders go verifying -> ready_for_pickup, ship orders go
-// verifying -> shipping. The two are mutually exclusive.
 function forwardTransitions(order) {
   const isShip = order.delivery === 'ship';
   switch (order.status) {
@@ -27,7 +25,6 @@ function forwardTransitions(order) {
     case 'verifying':
       return isShip ? ['shipping'] : ['ready_for_pickup'];
     case 'shipping':
-      return ['received'];
     case 'ready_for_pickup':
       return ['received'];
     default:
@@ -35,11 +32,7 @@ function forwardTransitions(order) {
   }
 }
 
-// Revert transitions mirror the forward ones, allowing the admin to
-// undo a mistake. received goes back to the appropriate delivery state,
-// not straight to verifying.
 function backTransitions(order) {
-  const isShip = order.delivery === 'ship';
   switch (order.status) {
     case 'verifying':
       return ['awaiting_payment_receipt'];
@@ -47,7 +40,7 @@ function backTransitions(order) {
     case 'ready_for_pickup':
       return ['verifying'];
     case 'received':
-      return isShip ? ['shipping'] : ['ready_for_pickup'];
+      return []; // No going back — receipt is gone.
     default:
       return [];
   }
@@ -63,13 +56,16 @@ const ACTION_LABELS = {
 
 export default function OrderDetailPage() {
   const { orderId } = useParams();
+  const navigate = useNavigate();
   const fetchOrderById = useOrderStore((s) => s.fetchOrderById);
   const updateOrderStatus = useOrderStore((s) => s.updateOrderStatus);
+  const completeOrder = useOrderStore((s) => s.completeOrder);
   const showToast = useToastStore((s) => s.show);
 
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
 
   usePageTitle(order ? `Admin · ${order.id}` : 'Admin · Order');
 
@@ -99,6 +95,13 @@ export default function OrderDetailPage() {
 
   const handleStatusChange = async (newStatus) => {
     if (updating || newStatus === order.status) return;
+
+    // Special-case "received": route through the confirmation modal.
+    if (newStatus === 'received') {
+      setShowCompleteModal(true);
+      return;
+    }
+
     setUpdating(true);
     try {
       const updated = await updateOrderStatus(order.id, newStatus);
@@ -107,6 +110,19 @@ export default function OrderDetailPage() {
     } catch (err) {
       showToast(err.message ?? 'Could not update status');
     } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleConfirmComplete = async () => {
+    setShowCompleteModal(false);
+    setUpdating(true);
+    try {
+      await completeOrder(order.id, order.receipt?.path);
+      showToast('Order completed and receipt removed');
+      navigate('/admin/orders/completed');
+    } catch (err) {
+      showToast(err.message ?? 'Could not complete order');
       setUpdating(false);
     }
   };
@@ -161,7 +177,6 @@ export default function OrderDetailPage() {
         </span>
       </div>
 
-      {/* Status controls */}
       {(forward.length > 0 || back.length > 0) && (
         <section className="mb-10">
           <h2 className="text-xs uppercase tracking-wide text-gray-500 mb-3">
@@ -262,7 +277,11 @@ export default function OrderDetailPage() {
               </button>
             </div>
           ) : (
-            <p className="text-gray-500">No receipt uploaded yet.</p>
+            <p className="text-gray-500">
+              {order.status === 'received'
+                ? 'Receipt removed when order was completed.'
+                : 'No receipt uploaded yet.'}
+            </p>
           )}
         </div>
       </section>
@@ -339,6 +358,51 @@ export default function OrderDetailPage() {
           {order.paymentMethod.replace('_', ' ')}
         </div>
       </section>
+
+      {/* Completion warning modal */}
+      <Modal
+        isOpen={showCompleteModal}
+        onClose={() => setShowCompleteModal(false)}
+      >
+        <div>
+          <h2 className="text-xl font-semibold tracking-tight">
+            Mark order as received?
+          </h2>
+          <p className="text-sm text-gray-500 mt-3">
+            This will:
+          </p>
+          <ul className="text-sm text-gray-500 mt-2 list-disc pl-5 space-y-1">
+            <li>Move the order to <strong>Completed Orders</strong>.</li>
+            <li>
+              <strong>Permanently delete the receipt file</strong> from storage.
+            </li>
+            <li>
+              Prevent any further status changes. This cannot be undone.
+            </li>
+          </ul>
+          <p className="text-sm text-gray-500 mt-3">
+            Make sure the payment has been verified before continuing.
+          </p>
+          <div className="flex flex-col gap-2 mt-6">
+            <button
+              type="button"
+              onClick={handleConfirmComplete}
+              disabled={updating}
+              className="w-full py-2.5 bg-brand text-white text-sm font-medium rounded-md hover:bg-brand-dark transition-colors disabled:opacity-40"
+            >
+              {updating ? 'Completing…' : 'Yes, mark as received'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCompleteModal(false)}
+              disabled={updating}
+              className="w-full py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:border-black transition-colors disabled:opacity-40"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
