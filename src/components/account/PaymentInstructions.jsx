@@ -1,5 +1,4 @@
 import { useCallback } from 'react';
-import duitnowQr from '../../assets/duitnow-qr.png';
 import { useAsync } from '../../hooks/useAsync';
 import { getPaymentDetails } from '../../api/paymentDetails';
 
@@ -32,7 +31,7 @@ export default function PaymentInstructions({ order }) {
         <div className="border border-gray-200 rounded-md p-4 text-sm text-gray-600">
           <p>
             Please transfer{' '}
-            <strong className="text-gray-900">{order.total}</strong> to
+            <strong className="text-gray-900">RM{order.total}</strong> to
             complete your order.
           </p>
           <p className="mt-2">
@@ -58,13 +57,19 @@ export default function PaymentInstructions({ order }) {
 
         {details.type === 'qr' && (
           <div className="mt-4 flex flex-col items-center">
-            <div className="bg-white border border-gray-200 rounded-md p-3">
-              <img
-                src={duitnowQr}
-                alt="DuitNow QR code"
-                className="w-48 h-48"
-              />
-            </div>
+            {details.qrCodeUrl ? (
+              <div className="bg-white border border-gray-200 rounded-md p-3">
+                <img
+                  src={details.qrCodeUrl}
+                  alt="DuitNow QR code"
+                  className="w-48 h-48 object-contain"
+                />
+              </div>
+            ) : (
+              <p className="text-sm text-red-500 text-center">
+                QR code image not uploaded in CMS.
+              </p>
+            )}
             <p className="text-xs text-gray-500 mt-3 text-center max-w-xs">
               {details.instructions}
             </p>

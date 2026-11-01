@@ -40,7 +40,7 @@ function backTransitions(order) {
     case 'ready_for_pickup':
       return ['verifying'];
     case 'received':
-      return []; // No going back — receipt is gone.
+      return []; 
     default:
       return [];
   }
@@ -60,12 +60,14 @@ export default function OrderDetailPage() {
   const fetchOrderById = useOrderStore((s) => s.fetchOrderById);
   const updateOrderStatus = useOrderStore((s) => s.updateOrderStatus);
   const completeOrder = useOrderStore((s) => s.completeOrder);
+  const deleteOrder = useOrderStore((s) => s.deleteOrder);
   const showToast = useToastStore((s) => s.show);
 
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   usePageTitle(order ? `Admin · ${order.id}` : 'Admin · Order');
 
@@ -96,7 +98,6 @@ export default function OrderDetailPage() {
   const handleStatusChange = async (newStatus) => {
     if (updating || newStatus === order.status) return;
 
-    // Special-case "received": route through the confirmation modal.
     if (newStatus === 'received') {
       setShowCompleteModal(true);
       return;
@@ -123,6 +124,19 @@ export default function OrderDetailPage() {
       navigate('/admin/orders/completed');
     } catch (err) {
       showToast(err.message ?? 'Could not complete order');
+      setUpdating(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    setShowDeleteModal(false);
+    setUpdating(true);
+    try {
+      await deleteOrder(order.id, order.receipt?.path);
+      showToast('Order deleted completely');
+      navigate('/admin/orders');
+    } catch (err) {
+      showToast(err.message ?? 'Could not delete order');
       setUpdating(false);
     }
   };
@@ -359,6 +373,21 @@ export default function OrderDetailPage() {
         </div>
       </section>
 
+      {/* Danger Zone */}
+      <section className="mt-16 pt-8 border-t border-red-200">
+        <h2 className="text-sm font-semibold text-red-600 mb-2">Danger Zone</h2>
+        <p className="text-xs text-gray-500 mb-4">
+          Deleting an order is permanent. It will remove the order from the customer's history and permanently delete the receipt file.
+        </p>
+        <button
+          type="button"
+          onClick={() => setShowDeleteModal(true)}
+          className="px-5 py-2.5 border border-red-300 text-red-600 text-sm font-medium rounded-md hover:bg-red-50 transition-colors"
+        >
+          Delete this order
+        </button>
+      </section>
+
       {/* Completion warning modal */}
       <Modal
         isOpen={showCompleteModal}
@@ -395,6 +424,44 @@ export default function OrderDetailPage() {
             <button
               type="button"
               onClick={() => setShowCompleteModal(false)}
+              disabled={updating}
+              className="w-full py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:border-black transition-colors disabled:opacity-40"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+      >
+        <div>
+          <h2 className="text-xl font-semibold tracking-tight text-red-600">
+            Delete order permanently?
+          </h2>
+          <p className="text-sm text-gray-500 mt-3">
+            This will permanently delete order <strong>{order.id}</strong> from the database.
+          </p>
+          <ul className="text-sm text-gray-500 mt-2 list-disc pl-5 space-y-1">
+            <li>The receipt file will be deleted from storage.</li>
+            <li>The customer will no longer see this order in their history.</li>
+            <li>This action cannot be undone.</li>
+          </ul>
+          <div className="flex flex-col gap-2 mt-6">
+            <button
+              type="button"
+              onClick={handleConfirmDelete}
+              disabled={updating}
+              className="w-full py-2.5 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors disabled:opacity-40"
+            >
+              {updating ? 'Deleting…' : 'Yes, delete permanently'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowDeleteModal(false)}
               disabled={updating}
               className="w-full py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:border-black transition-colors disabled:opacity-40"
             >
