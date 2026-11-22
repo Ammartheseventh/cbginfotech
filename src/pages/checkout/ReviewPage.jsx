@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useCheckoutStore } from '../../store/useCheckoutStore';
 import { useCartStore } from '../../store/useCartStore';
 import { useOrderStore } from '../../store/useOrderStore';
-import { useAuthStore } from '../../store/useAuthStore';
 import { useToastStore } from '../../store/useToastStore';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import CheckoutSteps from '../../components/checkout/CheckoutSteps';
@@ -27,7 +26,6 @@ export default function ReviewPage() {
   const getTotal = useCartStore((s) => s.getTotal);
   const clearCart = useCartStore((s) => s.clearCart);
   const addOrder = useOrderStore((s) => s.addOrder);
-  const user = useAuthStore((s) => s.user);
   const coupon = useCartStore((s) => s.coupon);
 
   const showToast = useToastStore((s) => s.show);
@@ -61,37 +59,44 @@ export default function ReviewPage() {
     setSubmitting(true);
 
     try {
+      // Send only IDs + quantities. The Edge Function re-fetches live prices
+      // from Sanity and recomputes subtotal/discount/shipping/total.
+      // expectedSubtotal lets the server detect price drift since the cart was built.
+      const idempotencyKey = crypto.randomUUID();
+
       const orderId = await addOrder({
-        userId: user.id,
-        status: 'awaiting_payment_receipt',
+        items: items.map((i) => ({ id: i.id, quantity: i.quantity })),
+        expectedSubtotal: subtotal,
+        couponCode: coupon?.code ?? null,
+        delivery,
+        address: delivery === 'ship' ? info.address : null,
         customer: {
           name: info.name,
           email: info.email,
           phone: info.phone,
         },
-        address: delivery === 'ship' ? info.address : null,
-        delivery,
-        items: items.map((i) => ({
-          id: i.id,
-          name: i.name,
-          price: i.price,
-          quantity: i.quantity,
-          images: i.images,
-        })),
-        subtotal,
-        discount,
-        coupon,
-        shipping: shippingCost,
-        total,
         paymentMethod,
+        idempotencyKey,
       });
 
       clearCart();
       resetCheckout();
       navigate(`/checkout/payment/${orderId}`);
     } catch (err) {
-      // Surface the error to the user using a toast notification
-      showToast(err.message ?? 'Could not place order');
+      if (err.code === 'PRICE_CHANGED') {
+        showToast(
+          err.message ||
+            'Prices have changed since you added items to your cart. Please review your cart.'
+        );
+      } else if (err.code === 'RATE_LIMITED') {
+        showToast(
+          'Too many orders in a short time. Please wait a moment and try again.'
+        );
+      } else if (err.code === 'OUT_OF_STOCK' || err.code === 'PRODUCT_NOT_FOUND') {
+        showToast(err.message || 'Some items are no longer available.');
+      } else {
+        showToast(err.message ?? 'Could not place order');
+      }
       setSubmitting(false);
     }
   };

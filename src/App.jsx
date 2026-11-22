@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/useAuthStore';
 import { useAddressStore } from './store/useAddressStore';
 import { useOrderStore } from './store/useOrderStore';
+import { useCheckoutStore } from './store/useCheckoutStore';
 import Layout from './components/layout/Layout';
 import CheckoutLayout from './components/checkout/CheckoutLayout';
 import AccountLayout from './components/account/AccountLayout';
@@ -38,7 +39,6 @@ import RequireAdmin from './components/auth/RequireAdmin';
 function App() {
   const user = useAuthStore((s) => s.user);
   const authLoading = useAuthStore((s) => s.loading);
-  const refresh = useAuthStore((s) => s.refresh);
 
   const fetchAddresses = useAddressStore((s) => s.fetchAddresses);
   const clearAddresses = useAddressStore((s) => s.clear);
@@ -46,12 +46,17 @@ function App() {
   const fetchOrders = useOrderStore((s) => s.fetchOrders);
   const clearOrders = useOrderStore((s) => s.clear);
 
-  // Restore the Supabase session on app load.
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  const resetCheckout = useCheckoutStore((s) => s.reset);
 
-  // Load addresses and orders when a user logs in, clear them when they log out.
+  // Subscribe to Supabase auth. Fires INITIAL_SESSION on mount,
+  // then keeps user in sync with sign-in, sign-out, token refresh.
+  useEffect(() => {
+    const cleanup = useAuthStore.getState().init();
+    return cleanup;
+  }, []);
+
+  // Load or clear user-scoped data when auth state changes.
+  // Also clears checkout PII on logout so it doesn't leak to next user.
   useEffect(() => {
     if (authLoading) return;
     if (user) {
@@ -60,8 +65,17 @@ function App() {
     } else {
       clearAddresses();
       clearOrders();
+      resetCheckout();
     }
-  }, [user, authLoading, fetchAddresses, clearAddresses, fetchOrders, clearOrders]);
+  }, [
+    user,
+    authLoading,
+    fetchAddresses,
+    clearAddresses,
+    fetchOrders,
+    clearOrders,
+    resetCheckout,
+  ]);
 
   return (
     <Routes>

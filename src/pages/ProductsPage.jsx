@@ -27,14 +27,8 @@ export default function ProductsPage() {
     [setFilter]
   );
 
-  if (loading || !filtered) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        <p className="text-sm text-gray-500">Loading products…</p>
-      </div>
-    );
-  }
-
+  // Error check must come FIRST — otherwise the loading branch
+  // (loading=false, filtered=null) shows "Loading…" forever on failure.
   if (error) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-12">
@@ -45,10 +39,19 @@ export default function ProductsPage() {
     );
   }
 
+  if (loading || !filtered) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-12">
+        <p className="text-sm text-gray-500">Loading products…</p>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-12">
-
-      <h1 className="mb-6 text-2xl font-semibold tracking-tight">All Products</h1>
+      <h1 className="mb-6 text-2xl font-semibold tracking-tight">
+        All Products
+      </h1>
 
       <FilterBar
         categories={categories ?? []}

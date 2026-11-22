@@ -1,10 +1,25 @@
 import { create } from 'zustand';
 
+let hideTimer = null;
+
 export const useToastStore = create((set) => ({
   message: null,
   show: (message) => {
+    if (hideTimer) {
+      clearTimeout(hideTimer);
+      hideTimer = null;
+    }
     set({ message });
-    setTimeout(() => set({ message: null }), 2000);
+    hideTimer = setTimeout(() => {
+      set({ message: null });
+      hideTimer = null;
+    }, 2000);
   },
-  hide: () => set({ message: null }),
+  hide: () => {
+    if (hideTimer) {
+      clearTimeout(hideTimer);
+      hideTimer = null;
+    }
+    set({ message: null });
+  },
 }));

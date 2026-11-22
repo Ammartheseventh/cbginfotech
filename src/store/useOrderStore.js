@@ -2,6 +2,7 @@
 
 import { create } from 'zustand';
 import { supabase } from '../api/supabase';
+import { useAuthStore } from './useAuthStore';
 
 function fromRow(row) {
   return {
@@ -29,23 +30,6 @@ function fromRow(row) {
   };
 }
 
-function toInsertRow(orderData) {
-  return {
-    user_id: orderData.userId,
-    status: orderData.status,
-    customer: orderData.customer,
-    address: orderData.address,
-    delivery: orderData.delivery,
-    items: orderData.items,
-    subtotal: orderData.subtotal,
-    discount: orderData.discount,
-    coupon: orderData.coupon,
-    shipping: orderData.shipping,
-    total: orderData.total,
-    payment_method: orderData.paymentMethod,
-  };
-}
-
 export const useOrderStore = create((set, get) => ({
   orders: [],
   loading: false,
@@ -53,10 +37,26 @@ export const useOrderStore = create((set, get) => ({
 
   fetchOrders: async () => {
     set({ loading: true, error: null });
-    const { data, error } = await supabase
+
+    const currentUser = useAuthStore.getState().user;
+    if (!currentUser) {
+      set({ orders: [], loading: false, error: null });
+      return;
+    }
+
+    let query = supabase
       .from('orders')
       .select('*')
       .order('created_at', { ascending: false });
+
+    // Defense-in-depth: RLS already restricts by user, but an explicit filter
+    // means a misconfigured RLS policy can't leak other users' orders.
+    // Admins see all orders (matches the admin RLS policy).
+    if (currentUser.role !== 'admin') {
+      query = query.eq('user_id', currentUser.id);
+    }
+
+    const { data, error } = await query;
     if (error) {
       set({ loading: false, error: error.message });
       return;
@@ -83,16 +83,36 @@ export const useOrderStore = create((set, get) => ({
   },
 
   addOrder: async (orderData) => {
-    const { data, error } = await supabase
-      .from('orders')
-      .insert(toInsertRow(orderData))
-      .select()
-      .single();
-    if (error) throw new Error(error.message);
+    // Thin wrapper over the create_order Edge Function.
+    // Inputs (item IDs, quantities, customer, delivery) are validated server-side.
+    // Prices/totals/coupon validity are re-derived from Sanity — never trusted from client.
+    const { data, error } = await supabase.functions.invoke('create_order', {
+      body: orderData,
+    });
 
-    const created = fromRow(data);
-    set((state) => ({ orders: [created, ...state.orders] }));
-    return created.id;
+    if (error) {
+      // supabase.functions.invoke puts the raw Response on error.context.
+      // Parse it to extract our structured error code + message.
+      let parsed = null;
+      try {
+        if (error.context instanceof Response) {
+          parsed = await error.context.json();
+        }
+      } catch {
+        // Body wasn't JSON (e.g. network failure) — fall through to generic message
+      }
+
+      const code = parsed?.error?.code ?? 'UNKNOWN';
+      const message =
+        parsed?.error?.message ?? error.message ?? 'Could not create order';
+
+      const err = new Error(message);
+      err.code = code;
+      err.details = parsed?.error;
+      throw err;
+    }
+
+    return data.orderId;
   },
 
   uploadReceipt: async (order, file) => {
@@ -147,10 +167,7 @@ export const useOrderStore = create((set, get) => ({
   },
 
   completeOrder: async (id, currentReceiptPath) => {
-    if (currentReceiptPath) {
-      await supabase.storage.from('receipts').remove([currentReceiptPath]);
-    }
-
+    // DB update first: even if file removal fails, the order is correctly completed.
     const { data, error } = await supabase
       .from('orders')
       .update({
@@ -165,6 +182,17 @@ export const useOrderStore = create((set, get) => ({
 
     if (error) throw new Error(error.message);
 
+    // Then attempt file removal. Failure here leaves an orphaned file,
+    // which is a much smaller problem than a DB row pointing at a missing file.
+    if (currentReceiptPath) {
+      const { error: removeError } = await supabase.storage
+        .from('receipts')
+        .remove([currentReceiptPath]);
+      if (removeError) {
+        console.error('Receipt file removal failed (orphan will remain):', removeError);
+      }
+    }
+
     const updated = fromRow(data);
     set((state) => ({
       orders: state.orders.map((o) => (o.id === id ? updated : o)),
@@ -173,19 +201,25 @@ export const useOrderStore = create((set, get) => ({
   },
 
   deleteOrder: async (id, receiptPath) => {
-    if (receiptPath) {
-      await supabase.storage.from('receipts').remove([receiptPath]);
-    }
-
+    // DB delete first, mirroring completeOrder's ordering.
     const { data, error } = await supabase
       .from('orders')
       .delete()
       .eq('id', id)
-      .select(); 
+      .select();
 
     if (error) throw new Error(error.message);
     if (!data || data.length === 0) {
       throw new Error('Delete failed. You might not have admin permissions.');
+    }
+
+    if (receiptPath) {
+      const { error: removeError } = await supabase.storage
+        .from('receipts')
+        .remove([receiptPath]);
+      if (removeError) {
+        console.error('Receipt file removal failed (orphan will remain):', removeError);
+      }
     }
 
     set((state) => ({

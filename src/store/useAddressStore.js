@@ -1,12 +1,9 @@
 // src/store/useAddressStore.js
-//
-// Address store backed by Supabase. Same public interface as the previous
-// localStorage version, so components don't need to change.
 
 import { create } from 'zustand';
 import { supabase } from '../api/supabase';
+import { useAuthStore } from './useAuthStore';
 
-// Convert a Supabase row (snake_case) to the frontend shape (camelCase).
 function fromRow(row) {
   return {
     id: row.id,
@@ -21,7 +18,6 @@ function fromRow(row) {
   };
 }
 
-// Convert a frontend patch to Supabase columns.
 function toRow(patch) {
   const row = {};
   if (patch.label !== undefined) row.label = patch.label;
@@ -42,10 +38,21 @@ export const useAddressStore = create((set, get) => ({
 
   fetchAddresses: async () => {
     set({ loading: true, error: null });
+
+    const currentUser = useAuthStore.getState().user;
+    if (!currentUser) {
+      set({ addresses: [], loading: false, error: null });
+      return;
+    }
+
+    // Defense-in-depth: RLS already filters by user_id, but explicit filter
+    // ensures no leak if a policy is ever misconfigured.
     const { data, error } = await supabase
       .from('addresses')
       .select('*')
+      .eq('user_id', currentUser.id)
       .order('created_at', { ascending: true });
+
     if (error) {
       set({ loading: false, error: error.message });
       return;
@@ -58,7 +65,6 @@ export const useAddressStore = create((set, get) => ({
     const isFirst = current.length === 0;
     const shouldBeDefault = isFirst || address.isDefault === true;
 
-    // If this becomes the new default, un-default the previous one first.
     if (shouldBeDefault && current.some((a) => a.isDefault)) {
       const { error: clearError } = await supabase
         .from('addresses')
@@ -105,7 +111,6 @@ export const useAddressStore = create((set, get) => ({
 
     let nextAddresses = remaining;
 
-    // If we removed the default, promote the first remaining address.
     if (removed?.isDefault && remaining.length > 0) {
       const promoteId = remaining[0].id;
       const { error: promoteError } = await supabase
@@ -124,7 +129,6 @@ export const useAddressStore = create((set, get) => ({
   },
 
   makeDefault: async (id) => {
-    // Clear the current default first.
     const { error: clearError } = await supabase
       .from('addresses')
       .update({ is_default: false })

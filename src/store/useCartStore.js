@@ -46,7 +46,10 @@ export const useCartStore = create(
 
       getTotal: () => {
         const { items } = get();
-        return items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+        const raw = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+        // Round to 2 decimals — prevents RM59.97000000000001 in the UI
+        // and keeps stored order.subtotal consistent with computed total.
+        return Math.round(raw * 100) / 100;
       },
 
       getItemCount: () => {
