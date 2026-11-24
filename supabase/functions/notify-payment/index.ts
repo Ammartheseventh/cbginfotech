@@ -3,8 +3,7 @@ import { Resend } from 'https://esm.sh/resend@4';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
@@ -56,7 +55,8 @@ Deno.serve(async (req) => {
     }
 
     const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
-    const notifyEmail = Deno.env.get('NOTIFY_EMAIL');
+    
+    
     const adminUrl = Deno.env.get('ADMIN_URL');
 
     const itemLines = order.items
@@ -90,8 +90,13 @@ ${adminUrl}/admin/orders/${order.id}
 `;
 
     const { error: sendError } = await resend.emails.send({
-      from: 'onboarding@resend.dev',
-      to: notifyEmail!,
+      
+
+      from: 'CBG Tech Orders <orders@cbgtechonline.com.my>', 
+      
+      
+      to: ['sales@cbgtechonline.com.my', 'ramesh@cbgtechonline.com.my'], 
+      
       subject: `New payment receipt — ${order.id}`,
       text: textBody,
       attachments: [
@@ -103,6 +108,7 @@ ${adminUrl}/admin/orders/${order.id}
     });
 
     if (sendError) {
+      console.error('Resend Error:', sendError);
       return json({ error: sendError.message }, 500);
     }
 

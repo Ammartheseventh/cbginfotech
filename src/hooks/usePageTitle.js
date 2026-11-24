@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-const SITE_NAME = 'CBG InfoTech';
+const SITE_NAME = 'CBG TechOnline';
 
 export function usePageTitle(title) {
   useEffect(() => {

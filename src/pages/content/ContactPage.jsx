@@ -14,29 +14,27 @@ export default function ContactPage() {
 
       <h2>Head office</h2>
       <p>
-        CBG InfoTech Sdn Bhd
+        CBG TechOnline Sdn Bhd
         <br />
-        Level 12, Menara CBG
+        27, Jalan Pendidik
         <br />
-        Jalan Ampang
+        U1/31, Hicom-glenmarie Industrial Park
         <br />
-        50450 Kuala Lumpur
+        40150 Shah Alam, Selangor
         <br />
         Malaysia
       </p>
 
       <h2>Phone</h2>
       <p>
-        <a href="tel:+60321234567">+60 3-2123 4567</a>
+        <a href="tel:+60355699951">03-5569 9951</a>
       </p>
 
       <h2>Email</h2>
       <p>
-        General enquiries: <a href="mailto:hello@cbginfotech.com">hello@cbginfotech.com</a>
+        Sales: <a href="mailto:sales@cbgtechonline.com.my">sales@cbgtechonline.com.my</a>
         <br />
-        Sales: <a href="mailto:sales@cbginfotech.com">sales@cbginfotech.com</a>
-        <br />
-        Support: <a href="mailto:support@cbginfotech.com">support@cbginfotech.com</a>
+        Support: <a href="mailto:helpdesk@cbgtechonline.com.my">helpdesk@cbgtechonline.com.my</a>
       </p>
 
       <h2>Business hours</h2>

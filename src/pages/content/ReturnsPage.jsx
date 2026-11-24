@@ -35,7 +35,7 @@ export default function ReturnsPage() {
       <h2>How to initiate a return</h2>
       <ol>
         <li>
-          <a href="/contact">Contact us</a> with your order ID and the
+          <a href="/about/contact">Contact us</a> with your order ID and the
           reason for the return.
         </li>
         <li>
@@ -52,7 +52,7 @@ export default function ReturnsPage() {
       <h2>Refunds</h2>
       <p>
         Once we receive and inspect the returned item, we'll notify you of
-        the outcome. Approved refunds will be processed within 5–7 business
+        the outcome. Approved refunds will be processed within 5-7 business
         days to the original payment method.
       </p>
 
@@ -73,7 +73,7 @@ export default function ReturnsPage() {
       <h2>Questions</h2>
       <p>
         If anything is unclear, reach out through our{' '}
-        <a href="/contact">contact page</a> and we'll help.
+        <a href="/about/contact">contact page</a> and we'll help.
       </p>
     </ContentPage>
   );

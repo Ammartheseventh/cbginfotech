@@ -10,7 +10,7 @@ export default function PrivacyPage() {
       subtitle="Last updated: September 2026"
     >
       <p>
-        CBG InfoTech Sdn Bhd ("we", "us", or "our") operates this website
+        CBG TechOnline Sdn Bhd ("we", "us", or "our") operates this website
         and the services offered through it. This page informs you of our
         policies regarding the collection, use, and disclosure of personal
         data when you use our site.
@@ -55,13 +55,13 @@ export default function PrivacyPage() {
       <p>
         You have the right to access, correct, or request deletion of your
         personal data. To exercise these rights, please{' '}
-        <a href="/contact">contact us</a>.
+        <a href="/about/contact">contact us</a>.
       </p>
 
       <h2>Contact</h2>
       <p>
         If you have questions about this Privacy Policy, please reach out
-        through our <a href="/contact">contact page</a>.
+        through our <a href="/about/contact">contact page</a>.
       </p>
     </ContentPage>
   );

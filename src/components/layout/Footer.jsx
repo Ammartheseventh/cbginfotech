@@ -25,7 +25,7 @@ export default function Footer() {
           {/* Left: brand + tagline */}
           <div className="max-w-xs">
             <p className="text-sm font-semibold text-gray-900">
-              CBG InfoTech Sdn Bhd
+              CBG TechOnline Sdn Bhd
             </p>
             <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
               IT equipment leasing and supply for businesses across Malaysia.
@@ -49,7 +49,7 @@ export default function Footer() {
         {/* Bottom bar: copyright + socials */}
         <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 mt-8 pt-5 border-t border-gray-100">
           <p className="text-xs text-gray-500">
-            © {new Date().getFullYear()} CBG InfoTech Sdn Bhd. All rights
+            © {new Date().getFullYear()} CBG TechOnline Sdn Bhd. All rights
             reserved.
           </p>
 

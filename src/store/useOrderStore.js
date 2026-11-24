@@ -125,11 +125,13 @@ export const useOrderStore = create((set, get) => ({
     const ext = file.name.split('.').pop() || 'bin';
     const path = `${user.id}/${order.id}/receipt.${ext}`;
 
+    // 1. Upload file to storage
     const { error: uploadError } = await supabase.storage
       .from('receipts')
       .upload(path, file, { upsert: true, contentType: file.type });
     if (uploadError) throw new Error(uploadError.message);
 
+    // 2. Update the database record
     const { data, error } = await supabase
       .from('orders')
       .update({
@@ -142,6 +144,21 @@ export const useOrderStore = create((set, get) => ({
       .select()
       .single();
     if (error) throw new Error(error.message);
+
+    // 3. TRIGGER THE EMAIL EDGE FUNCTION HERE
+    try {
+      const { error: functionError } = await supabase.functions.invoke('notify-payment', {
+        body: { orderId: order.id },
+      });
+      
+      if (functionError) {
+        console.error('Email notification failed:', functionError);
+        // We don't throw an error here so the user still sees the success screen, 
+        // but you might want to handle this differently.
+      }
+    } catch (err) {
+      console.error('Failed to invoke email function:', err);
+    }
 
     const updated = fromRow(data);
     set((state) => ({

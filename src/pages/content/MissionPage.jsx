@@ -7,7 +7,7 @@ export default function MissionPage() {
   return (
     <ContentPage title="Mission & Vision">
       <p>
-        CBG InfoTech Sdn Bhd is a Malaysian IT equipment company specializing
+        CBG TechOnline Sdn Bhd is a Malaysian IT equipment company specializing
         in the leasing and supply of computers, peripherals, and networking
         infrastructure for businesses of all sizes.
       </p>

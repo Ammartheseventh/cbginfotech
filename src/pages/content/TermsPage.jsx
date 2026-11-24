@@ -10,7 +10,7 @@ export default function TermsPage() {
       subtitle="Last updated: September 2026"
     >
       <p>
-        These Terms & Conditions govern your use of the CBG InfoTech Sdn Bhd
+        These Terms & Conditions govern your use of the CBG TechOnline Sdn Bhd
         website and the services offered through it. By using this site,
         you agree to these terms.
       </p>
@@ -40,20 +40,20 @@ export default function TermsPage() {
 
       <h2>Returns and refunds</h2>
       <p>
-        Returns are governed by our <a href="/returns">Return Policy</a>.
+        Returns are governed by our <a href="/about/returns">Return Policy</a>.
         Please review it before placing an order.
       </p>
 
       <h2>Intellectual property</h2>
       <p>
         All content on this site — including text, images, logos, and
-        product photographs — is the property of CBG InfoTech Sdn Bhd or
+        product photographs — is the property of CBG TechOnline Sdn Bhd or
         its content suppliers and is protected by copyright.
       </p>
 
       <h2>Limitation of liability</h2>
       <p>
-        CBG InfoTech Sdn Bhd will not be liable for any indirect,
+        CBG TechOnline Sdn Bhd will not be liable for any indirect,
         incidental, or consequential damages arising out of your use of the
         site or the services offered through it, to the fullest extent
         permitted by Malaysian law.
